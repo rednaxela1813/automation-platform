@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automation-platform"
+version = "0.1.0"
+description = "Email-driven automation system"
+requires-python = ">=3.12"
+
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "pdfplumber>=0.10",
+    "pydantic>=2.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic-settings>=2.0.0",
+    "python-multipart>=0.0.9",
+    "python-docx>=1.1.0",
+    "lxml>=5.0.0",
+    "aiofiles>=23.0.0",
+    # Фоновые задачи
+    "celery[redis]>=5.3.0",
+    "redis>=5.0.0",
+    # Мониторинг системы
+    "psutil>=5.9.0",
+    # База данных
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+    # Безопасность и хеширование
+    "cryptography>=41.0.0",
+    "passlib[bcrypt]>=1.7.4",
+    # HTTP клиенты
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+automation-server = "automation.main:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["src/automation/tests"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I"]
