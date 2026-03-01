@@ -220,7 +220,7 @@ def _check_imap_connection() -> Dict[str, Any]:
         client = ImapEmailClient()
         
         # Простая проверка - пробуем получить сообщения
-        messages = client.fetch_unseen_messages()
+        messages = client.fetch_new_messages()
         
         return {
             "status": "ok",

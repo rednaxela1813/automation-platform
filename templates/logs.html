@@ -1,0 +1,351 @@
+{% extends "base.html" %} {% block content %}
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <h5 class="mb-0">
+          <i class="fas fa-list-alt me-2"></i>
+          Системные логи
+        </h5>
+        <div class="btn-group" role="group">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            onclick="refreshLogs()"
+          >
+            <i class="fas fa-sync-alt"></i> Обновить
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            onclick="toggleAutoRefresh()"
+          >
+            <i class="fas fa-play" id="autoRefreshIcon"></i>
+            <span id="autoRefreshText">Авто-обновление</span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-warning btn-sm"
+            onclick="clearLogs()"
+          >
+            <i class="fas fa-eraser"></i> Очистить
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <!-- Фильтры -->
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-filter me-2"></i>
+          Фильтры
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="levelFilter" class="form-label"
+            >Уровень логирования</label
+          >
+          <select
+            class="form-select form-select-sm"
+            id="levelFilter"
+            onchange="filterLogs()"
+          >
+            <option value="all">Все уровни</option>
+            <option value="ERROR">Только ошибки</option>
+            <option value="WARNING">Предупреждения</option>
+            <option value="INFO">Информация</option>
+            <option value="SUCCESS">Успешные операции</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="timeFilter" class="form-label">Период</label>
+          <select
+            class="form-select form-select-sm"
+            id="timeFilter"
+            onchange="filterLogs()"
+          >
+            <option value="all">Все время</option>
+            <option value="today">Сегодня</option>
+            <option value="hour">Последний час</option>
+            <option value="30min">Последние 30 мин</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="searchFilter" class="form-label">Поиск</label>
+          <input
+            type="text"
+            class="form-control form-control-sm"
+            id="searchFilter"
+            placeholder="Ищите в логах..."
+            oninput="filterLogs()"
+          />
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm w-100"
+          onclick="resetFilters()"
+        >
+          <i class="fas fa-times me-2"></i>
+          Сбросить фильтры
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Логи -->
+  <div class="col-md-9">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-terminal me-2"></i>
+          Лог-файл системы
+          <span class="badge bg-secondary" id="logCount"
+            >{{ logs|length }}</span
+          >
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div
+          class="log-container"
+          style="max-height: 600px; overflow-y: auto"
+          id="logContainer"
+        >
+          <div class="p-3">
+            {% if logs %}
+            <div id="logEntries">
+              {% for log in logs %}
+              <div
+                class="log-entry mb-2 p-2 rounded"
+                data-level="{{ log.level }}"
+                data-timestamp="{{ log.timestamp }}"
+                style="border-left: 4px solid {% if log.level == 'ERROR' %}#dc3545{% elif log.level == 'WARNING' %}#ffc107{% elif log.level == 'SUCCESS' %}#198754{% else %}#0d6efd{% endif %}; background-color: {% if log.level == 'ERROR' %}#f8d7da{% elif log.level == 'WARNING' %}#fff3cd{% elif log.level == 'SUCCESS' %}#d1e7dd{% else %}#cfe2ff{% endif %};"
+              >
+                <div class="d-flex align-items-start">
+                  <div class="flex-shrink-0 me-3">
+                    {% if log.level == 'ERROR' %}
+                    <i class="fas fa-exclamation-circle text-danger"></i>
+                    {% elif log.level == 'WARNING' %}
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    {% elif log.level == 'SUCCESS' %}
+                    <i class="fas fa-check-circle text-success"></i>
+                    {% else %}
+                    <i class="fas fa-info-circle text-primary"></i>
+                    {% endif %}
+                  </div>
+
+                  <div class="flex-grow-1">
+                    <div
+                      class="log-header d-flex justify-content-between align-items-center mb-1"
+                    >
+                      <span
+                        class="badge {% if log.level == 'ERROR' %}bg-danger{% elif log.level == 'WARNING' %}bg-warning text-dark{% elif log.level == 'SUCCESS' %}bg-success{% else %}bg-primary{% endif %} badge-sm"
+                      >
+                        {{ log.level }}
+                      </span>
+                      <small class="text-muted">{{ log.timestamp }}</small>
+                    </div>
+
+                    <div class="log-message">
+                      <code>{{ log.message }}</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+              <i class="fas fa-inbox fa-3x mb-3"></i>
+              <h6>Логи не найдены</h6>
+              <p class="small">Системные события будут отображаться здесь</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Статистика по логам -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-chart-bar me-2"></i>
+          Статистика логов
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-md-3">
+            <div class="border-end">
+              <h4 class="text-danger" id="errorCount">
+                {{ log_stats.ERROR or 0 }}
+              </h4>
+              <p class="text-muted mb-0">Ошибки</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="border-end">
+              <h4 class="text-warning" id="warningCount">
+                {{ log_stats.WARNING or 0 }}
+              </h4>
+              <p class="text-muted mb-0">Предупреждения</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="border-end">
+              <h4 class="text-success" id="successCount">
+                {{ log_stats.SUCCESS or 0 }}
+              </h4>
+              <p class="text-muted mb-0">Успешные</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <h4 class="text-primary" id="infoCount">
+              {{ log_stats.INFO or 0 }}
+            </h4>
+            <p class="text-muted mb-0">Информация</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  let autoRefreshInterval = null;
+  let isAutoRefreshActive = false;
+
+  function refreshLogs() {
+    location.reload();
+  }
+
+  function toggleAutoRefresh() {
+    const icon = document.getElementById("autoRefreshIcon");
+    const text = document.getElementById("autoRefreshText");
+
+    if (isAutoRefreshActive) {
+      // Останавливаем авто-обновление
+      clearInterval(autoRefreshInterval);
+      isAutoRefreshActive = false;
+      icon.className = "fas fa-play";
+      text.textContent = "Авто-обновление";
+    } else {
+      // Запускаем авто-обновление каждые 10 секунд
+      autoRefreshInterval = setInterval(refreshLogs, 10000);
+      isAutoRefreshActive = true;
+      icon.className = "fas fa-pause";
+      text.textContent = "Остановить";
+    }
+  }
+
+  function filterLogs() {
+    const levelFilter = document.getElementById("levelFilter").value;
+    const timeFilter = document.getElementById("timeFilter").value;
+    const searchFilter = document
+      .getElementById("searchFilter")
+      .value.toLowerCase();
+
+    const logEntries = document.querySelectorAll(".log-entry");
+    let visibleCount = 0;
+
+    logEntries.forEach((entry) => {
+      let show = true;
+
+      // Фильтр по уровню
+      if (levelFilter !== "all") {
+        const entryLevel = entry.getAttribute("data-level");
+        if (entryLevel !== levelFilter) {
+          show = false;
+        }
+      }
+
+      // Фильтр по времени
+      if (show && timeFilter !== "all") {
+        const entryTimestamp = entry.getAttribute("data-timestamp");
+        const entryTime = new Date(entryTimestamp);
+        const now = new Date();
+
+        let cutoffTime;
+        switch (timeFilter) {
+          case "today":
+            cutoffTime = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+            );
+            break;
+          case "hour":
+            cutoffTime = new Date(now.getTime() - 60 * 60 * 1000);
+            break;
+          case "30min":
+            cutoffTime = new Date(now.getTime() - 30 * 60 * 1000);
+            break;
+        }
+
+        if (entryTime < cutoffTime) {
+          show = false;
+        }
+      }
+
+      // Фильтр поиска
+      if (show && searchFilter) {
+        const message = entry
+          .querySelector(".log-message")
+          .textContent.toLowerCase();
+        if (!message.includes(searchFilter)) {
+          show = false;
+        }
+      }
+
+      entry.style.display = show ? "block" : "none";
+      if (show) visibleCount++;
+    });
+
+    document.getElementById("logCount").textContent = visibleCount;
+  }
+
+  function resetFilters() {
+    document.getElementById("levelFilter").value = "all";
+    document.getElementById("timeFilter").value = "all";
+    document.getElementById("searchFilter").value = "";
+    filterLogs();
+  }
+
+  function clearLogs() {
+    if (confirm("Очистить все логи? Это действие нельзя отменить.")) {
+      fetch("/api/v1/logs/clear", {
+        method: "POST",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          alert("Логи очищены: " + data.message);
+          location.reload();
+        })
+        .catch((err) => {
+          alert("Ошибка очистки логов: " + err.message);
+        });
+    }
+  }
+
+  // Автоматическая прокрутка к последнему логу
+  document.addEventListener("DOMContentLoaded", function () {
+    const logContainer = document.getElementById("logContainer");
+    logContainer.scrollTop = logContainer.scrollHeight;
+  });
+</script>
+{% endblock %}

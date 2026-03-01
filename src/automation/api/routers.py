@@ -4,11 +4,16 @@ API роутеры для Email Automation Platform
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
+import mimetypes
+from pathlib import Path
+from urllib.parse import unquote
 from typing import Dict, List, Any
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, UploadFile, File, Query
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
+import imaplib
 
 from automation.api.dependencies import get_email_processor, get_settings
 from automation.config.settings import Settings
@@ -46,6 +51,14 @@ class ConfigResponse(BaseModel):
     max_file_size_mb: int
     allowed_extensions: List[str]
     scan_interval_minutes: int
+
+
+class TestConnectionRequest(BaseModel):
+    imap_host: str | None = None
+    imap_port: int | None = None
+    imap_username: str | None = None
+    imap_password: str | None = None
+    imap_mailbox: str | None = None
 
 
 # ===== EMAIL PROCESSING ENDPOINTS =====
@@ -87,6 +100,25 @@ async def get_processing_status():
 
 
 # ===== FILE MANAGEMENT ENDPOINTS =====
+def _resolve_safe_file(path_value: str, settings: Settings) -> Path:
+    safe_dir = Path(settings.safe_storage_dir).resolve()
+    storage_root = safe_dir.parent.resolve()
+
+    decoded = unquote(path_value or "").lstrip("/")
+    if not decoded:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Primary: "safe/filename.ext" relative to storage root
+    candidate = (storage_root / decoded).resolve()
+    if candidate.is_file() and candidate.is_relative_to(safe_dir):
+        return candidate
+
+    # Fallback: path relative to safe dir
+    candidate = (safe_dir / decoded).resolve()
+    if candidate.is_file() and candidate.is_relative_to(safe_dir):
+        return candidate
+
+    raise HTTPException(status_code=404, detail="File not found")
 
 @router.get("/files/safe")
 async def list_safe_files(
@@ -121,6 +153,89 @@ async def list_safe_files(
         "files": file_info,
         "total": len(list(safe_dir.glob("*")))
     }
+
+
+@router.get("/files/view/{path_value:path}")
+async def view_safe_file(
+    path_value: str,
+    settings: Settings = Depends(get_settings)
+):
+    file_path = _resolve_safe_file(path_value, settings)
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type or "application/octet-stream",
+        filename=file_path.name,
+        headers={"Content-Disposition": f'inline; filename="{file_path.name}"'},
+    )
+
+
+@router.get("/files/download")
+async def download_safe_file(
+    path: str = Query(..., description="Relative path to safe storage file"),
+    settings: Settings = Depends(get_settings)
+):
+    file_path = _resolve_safe_file(path, settings)
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type or "application/octet-stream",
+        filename=file_path.name,
+    )
+
+
+@router.get("/files/info")
+async def file_info(
+    path: str = Query(..., description="Relative path to safe storage file"),
+    settings: Settings = Depends(get_settings)
+):
+    file_path = _resolve_safe_file(path, settings)
+    stat = file_path.stat()
+    size_kb = stat.st_size / 1024
+    size_formatted = f"{size_kb:.1f} KB" if size_kb < 1024 else f"{size_kb / 1024:.1f} MB"
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+
+    return {
+        "success": True,
+        "filename": file_path.name,
+        "size": stat.st_size,
+        "size_formatted": size_formatted,
+        "created_at": datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M"),
+        "mime_type": mime_type,
+        "extracted_data": None,
+    }
+
+
+@router.get("/files/analyze")
+async def analyze_file(
+    path: str = Query(..., description="Relative path to safe storage file"),
+    settings: Settings = Depends(get_settings)
+):
+    _resolve_safe_file(path, settings)
+    return PlainTextResponse("Analyze is not implemented yet.", status_code=501)
+
+
+@router.post("/files/cleanup")
+async def cleanup_old_files(
+    settings: Settings = Depends(get_settings)
+):
+    safe_dir = Path(settings.safe_storage_dir)
+    if not safe_dir.exists():
+        return {"message": "Safe storage directory not found", "files_removed": 0}
+
+    cutoff = datetime.now() - timedelta(days=30)
+    removed = 0
+    for file_path in safe_dir.iterdir():
+        if not file_path.is_file():
+            continue
+        if datetime.fromtimestamp(file_path.stat().st_mtime) < cutoff:
+            try:
+                file_path.unlink()
+                removed += 1
+            except OSError:
+                continue
+
+    return {"message": f"Removed {removed} files", "files_removed": removed}
 
 
 @router.get("/files/quarantine")
@@ -219,26 +334,56 @@ async def get_system_config(settings: Settings = Depends(get_settings)):
 
 
 @router.post("/system/test-connection")
-async def test_imap_connection(settings: Settings = Depends(get_settings)):
+async def test_imap_connection(
+    request: TestConnectionRequest | None = None,
+    settings: Settings = Depends(get_settings)
+):
     """
     Тестировать подключение к IMAP серверу
     """
     try:
-        from automation.adapters.email_imap import ImapEmailClient
-        
-        client = ImapEmailClient()
-        # Здесь будет тест подключения
-        
+        req = request or TestConnectionRequest()
+        host = req.imap_host or settings.imap_host
+        port = req.imap_port or 993
+        username = req.imap_username or settings.imap_user
+        password = req.imap_password or settings.imap_password
+        mailbox = req.imap_mailbox or settings.imap_mailbox
+
+        if not host or not username or not password:
+            return {
+                "success": False,
+                "status": "failed",
+                "error": "IMAP credentials not provided"
+            }
+
+        with imaplib.IMAP4_SSL(host, port) as imap:
+            imap.login(username, password)
+            status, _ = imap.select(mailbox)
+            if status != "OK":
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "error": f"Failed to select mailbox '{mailbox}'"
+                }
+
         return {
-            "status": "success", 
-            "message": "IMAP connection successful",
-            "server": settings.imap_host
+            "success": True,
+            "status": "success",
+            "message": f"IMAP connection successful. Mailbox '{mailbox}' доступен.",
+            "server": host
+        }
+    except imaplib.IMAP4.error as e:
+        return {
+            "success": False,
+            "status": "failed",
+            "error": f"IMAP auth failed: {str(e)}"
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"IMAP connection failed: {str(e)}"
-        )
+        return {
+            "success": False,
+            "status": "failed",
+            "error": f"IMAP connection failed: {str(e)}"
+        }
 
 
 # ===== BACKGROUND TASKS =====
@@ -247,15 +392,48 @@ async def process_emails_task(force_reprocess: bool = False, dry_run: bool = Fal
     """
     Фоновая задача для обработки электронной почты
     """
-    print(f"Starting email processing: force={force_reprocess}, dry_run={dry_run}")
+    print(f"🚀 Starting email processing: force={force_reprocess}, dry_run={dry_run}")
     
     try:
-        # Здесь будет вызов use case для обработки почты
-        # from automation.app.use_cases import ProcessEmailInvoicesUseCase
-        # processor = ProcessEmailInvoicesUseCase(...)
-        # await processor.execute()
+        # Импортируем необходимые зависимости
+        from automation.app.use_cases import EmailProcessingUseCase
+        from automation.adapters.email_imap import ImapEmailClient
+        from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
+        from automation.adapters.shopify_pdf_parser import ShopifyPdfInvoiceParser
+        from automation.adapters.pdf_parser import PdfInvoiceParser
+        from automation.adapters.excel_parser import ExcelInvoiceParser
+        from automation.adapters.file_storage import LocalFileStorage
+        from automation.config.settings import settings
         
-        print("Email processing completed successfully")
+        # Создаем адаптеры
+        email_client = ImapEmailClient()  # Использует настройки из settings автоматически
+        
+        db_path = settings.database_url
+        if db_path.startswith("sqlite:///"):
+            db_path = db_path.replace("sqlite:///", "")
+        repository = SqliteProcessedInvoiceRepository(db_path)
+        document_parsers = [
+            ShopifyPdfInvoiceParser(),
+            PdfInvoiceParser(),
+            ExcelInvoiceParser(),
+        ]
+        file_storage = LocalFileStorage()  # Использует настройки из settings автоматически
+        
+        # Создаем и выполняем use case
+        use_case = EmailProcessingUseCase(
+            email_processor=email_client,
+            repository=repository,
+            document_parser=document_parsers,
+            file_storage=file_storage
+        )
+        
+        result = use_case.process_new_emails(dry_run=dry_run)
+        
+        print(f"✅ Email processing completed: {result.messages_processed} messages, "
+              f"{result.invoices_found} invoices found, {result.invoices_uploaded} uploaded, "
+              f"{result.files_quarantined} quarantined")
+        
     except Exception as e:
-        print(f"Email processing failed: {str(e)}")
-        # Здесь можно добавить логирование и уведомления
+        print(f"❌ Email processing failed: {str(e)}")
+        import traceback
+        traceback.print_exc()

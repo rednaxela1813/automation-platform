@@ -1,0 +1,281 @@
+{% extends "base.html" %} {% block content %}
+<!-- Метрики системы -->
+<div class="row mb-4">
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card metric-card success">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-uppercase mb-1">
+              Обработано писем
+            </div>
+            <div
+              class="h5 mb-0 font-weight-bold"
+              data-metric="total_emails_processed"
+            >
+              {{ stats.total_emails_processed or 0 }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-envelope fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card metric-card warning">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-uppercase mb-1">
+              Файлов сохранено
+            </div>
+            <div
+              class="h5 mb-0 font-weight-bold"
+              data-metric="files_in_safe_storage"
+            >
+              {{ stats.files_in_safe_storage or 0 }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-file-pdf fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card metric-card danger">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-uppercase mb-1">
+              В карантине
+            </div>
+            <div
+              class="h5 mb-0 font-weight-bold"
+              data-metric="files_in_quarantine"
+            >
+              {{ stats.files_in_quarantine or 0 }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-exclamation-triangle fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card metric-card">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-uppercase mb-1">
+              Статус системы
+            </div>
+            <div class="h5 mb-0 font-weight-bold" data-metric="system_status">
+              {{ stats.system_status or "Неизвестно" }}
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-heartbeat fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Управление обработкой -->
+<div class="row mb-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-play-circle me-2"></i>
+          Обработка почты
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <h6>Автоматическая обработка</h6>
+            <p class="text-muted mb-2">
+              Обработать новые письма с вложениями PDF
+            </p>
+            <button
+              id="processBtn"
+              type="button"
+              class="btn btn-success"
+              onclick="processEmails()"
+            >
+              <span class="processing-animation">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+              </span>
+              <i class="fas fa-play me-2"></i>
+              Запустить обработку
+            </button>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <h6>Дополнительные опции</h6>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="dryRunCheck"
+              />
+              <label class="form-check-label" for="dryRunCheck">
+                Тестовый режим (без сохранения)
+              </label>
+            </div>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="forceReprocessCheck"
+              />
+              <label class="form-check-label" for="forceReprocessCheck">
+                Переобработать все письма
+              </label>
+            </div>
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              onclick="
+                processEmails(
+                  document.getElementById('forceReprocessCheck').checked,
+                  document.getElementById('dryRunCheck').checked,
+                )
+              "
+            >
+              <i class="fas fa-cogs me-2"></i>
+              Запустить с опциями
+            </button>
+          </div>
+        </div>
+
+        {% if last_processing %}
+        <div class="alert alert-info mt-3">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Последняя обработка:</strong> {{ last_processing.processed_at
+          }} <br />
+          <small>
+            Писем: {{ last_processing.emails_processed }}, Файлов: {{
+            last_processing.files_processed }}, Карантин: {{
+            last_processing.files_quarantined }}
+          </small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-server me-2"></i>
+          Конфигурация
+        </h6>
+      </div>
+      <div class="card-body">
+        <dl class="row small">
+          <dt class="col-sm-6">IMAP хост:</dt>
+          <dd class="col-sm-6">{{ config.imap_host }}</dd>
+
+          <dt class="col-sm-6">Почтовый ящик:</dt>
+          <dd class="col-sm-6">{{ config.imap_mailbox }}</dd>
+
+          <dt class="col-sm-6">Макс. размер файла:</dt>
+          <dd class="col-sm-6">{{ config.max_file_size_mb }}MB</dd>
+
+          <dt class="col-sm-6">Типы файлов:</dt>
+          <dd class="col-sm-6">{{ config.allowed_extensions | join(', ') }}</dd>
+        </dl>
+
+        <a href="/settings" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-edit me-2"></i>
+          Изменить настройки
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Последние файлы -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <h6 class="mb-0">
+          <i class="fas fa-folder-open me-2"></i>
+          Последние обработанные файлы
+        </h6>
+        <a href="/files" class="btn btn-outline-primary btn-sm"> Все файлы </a>
+      </div>
+
+      {% if recent_files %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Имя файла</th>
+                <th>Размер</th>
+                <th>Дата обработки</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for file in recent_files %}
+              <tr>
+                <td>
+                  <i class="fas fa-file-pdf text-danger me-2"></i>
+                  {{ file.filename }}
+                </td>
+                <td>{{ file.size_formatted }}</td>
+                <td>{{ file.created_at }}</td>
+                <td>
+                  <span class="badge bg-success status-badge"> Обработан </span>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-outline-primary btn-sm"
+                    onclick="viewFile('{{ file.filepath }}')"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted">
+        <i class="fas fa-inbox fa-3x mb-3"></i>
+        <p>Файлы еще не обрабатывались</p>
+        <p class="small">Запустите обработку почты для начала работы</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  function viewFile(filepath) {
+    // Открываем файл в новом окне или показываем информацию
+    window.open("/api/v1/files/view/" + encodeURIComponent(filepath), "_blank");
+  }
+</script>
+{% endblock %}

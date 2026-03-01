@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
 import shutil
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -25,8 +26,8 @@ class LocalFileStorage:
         self.safe_storage_dir.mkdir(parents=True, exist_ok=True)
         self.quarantine_dir.mkdir(parents=True, exist_ok=True)
         
-        # Разрешенные расширения файлов
-        self.allowed_extensions = {'.pdf', '.xlsx', '.xls', '.docx', '.xml'}
+        # Разрешенные расширения файлов (берем из настроек)
+        self.allowed_extensions = {ext.lower() for ext in settings.allowed_file_extensions}
         
         # Максимальный размер файла в байтах
         self.max_file_size = settings.max_file_size_mb * 1024 * 1024
@@ -165,16 +166,22 @@ class LocalFileStorage:
     
     def _has_valid_mime_type(self, attachment: EmailAttachment) -> bool:
         """Проверить MIME тип файла"""
-        allowed_mime_types = {
-            'application/pdf',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  # .xlsx
-            'application/vnd.ms-excel',  # .xls
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  # .docx
-            'application/xml',
-            'text/xml'
-        }
-        
-        return attachment.content_type in allowed_mime_types
+        allowed_mime_types = {mime.lower() for mime in settings.allowed_mime_types}
+        content_type = (attachment.content_type or "").split(";", 1)[0].strip().lower()
+
+        if content_type in allowed_mime_types:
+            return True
+
+        # Разрешаем "generic" MIME для файлов с допустимым расширением
+        if content_type in {"application/octet-stream", "binary/octet-stream"}:
+            return self._has_allowed_extension(attachment.filename)
+
+        # Fallback: определяем MIME по расширению
+        guessed_mime, _ = mimetypes.guess_type(attachment.filename)
+        if guessed_mime and guessed_mime.lower() in allowed_mime_types:
+            return True
+
+        return False
     
     def _contains_suspicious_content(self, attachment: EmailAttachment) -> bool:
         """Базовая проверка на вредоносное содержимое"""

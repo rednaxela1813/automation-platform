@@ -14,6 +14,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY src/ src/
 COPY run.py ./
+COPY templates/ templates/
 
 # Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -e .

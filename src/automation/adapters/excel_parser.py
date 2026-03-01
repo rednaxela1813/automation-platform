@@ -54,6 +54,21 @@ class ExcelInvoiceParser:
                 success=False,
                 errors=[f'Excel parsing error: {str(e)}']
             )
+
+    def extract_text(self, file_path: Path) -> str:
+        """Извлечь текст из Excel файла (упрощенно)"""
+        text_lines: list[str] = []
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
+        try:
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
+                for row in sheet.iter_rows(values_only=True):
+                    row_values = [str(v).strip() for v in row if v is not None]
+                    if row_values:
+                        text_lines.append(" ".join(row_values))
+        finally:
+            workbook.close()
+        return "\n".join(text_lines)
     
     def _extract_invoice_from_sheet(self, sheet, source_filename: str) -> Optional[Invoice]:
         """Извлечь данные счета из листа Excel"""

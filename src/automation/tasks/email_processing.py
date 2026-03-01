@@ -29,8 +29,14 @@ def process_new_emails_task(self) -> Dict[str, Any]:
         
         # Инициализируем зависимости
         email_processor = ImapEmailClient()
-        repository = SqliteProcessedInvoiceRepository(Path("automation.db"))
-        document_parser = PdfInvoiceParser()  # Можно расширить для поддержки разных форматов
+        db_path = settings.database_url
+        if db_path.startswith("sqlite:///"):
+            db_path = db_path.replace("sqlite:///", "")
+        repository = SqliteProcessedInvoiceRepository(Path(db_path))
+        document_parser = [
+            PdfInvoiceParser(),
+            ExcelInvoiceParser(),
+        ]
         file_storage = LocalFileStorage()
         
         # Создаем use case

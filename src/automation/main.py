@@ -8,8 +8,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from automation.api.routers import router as api_router
+from automation.web.interface import web_router
 from automation.config.settings import settings
 
 
@@ -48,6 +51,7 @@ def create_app() -> FastAPI:
 
     # Включаем роутеры
     app.include_router(api_router, prefix="/api/v1")
+    app.include_router(web_router)  # Веб-интерфейс без префикса
 
     return app
 
@@ -56,13 +60,15 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-@app.get("/")
+@app.get("/api")
 async def root():
-    """Корневой endpoint"""
+    """API информация"""
     return {
         "message": "Email Automation Platform API",
         "version": settings.app_version,
-        "status": "running"
+        "status": "running",
+        "docs": "/docs",
+        "web_interface": "/"
     }
 
 

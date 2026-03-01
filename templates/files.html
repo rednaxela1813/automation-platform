@@ -1,0 +1,326 @@
+{% extends "base.html" %} {% block content %}
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body text-center">
+        <h3 class="text-primary">{{ files|length }}</h3>
+        <p class="text-muted mb-0">Всего файлов</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body text-center">
+        <h3 class="text-success">
+          {{ pdf_count or 0 }}
+        </h3>
+        <p class="text-muted mb-0">PDF файлов</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <h5 class="mb-0">
+          <i class="fas fa-folder-open me-2"></i>
+          Все обработанные файлы
+        </h5>
+        <div class="btn-group" role="group">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            onclick="refreshFiles()"
+          >
+            <i class="fas fa-sync-alt"></i> Обновить
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-danger btn-sm"
+            onclick="cleanupFiles()"
+          >
+            <i class="fas fa-trash"></i> Очистить старые
+          </button>
+        </div>
+      </div>
+
+      {% if files %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 40%">Имя файла</th>
+                <th style="width: 10%">Размер</th>
+                <th style="width: 15%">Дата создания</th>
+                <th style="width: 10%">Тип</th>
+                <th style="width: 15%">Статус</th>
+                <th style="width: 10%">Действия</th>
+                <th style="width: 8%">Данные</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for file in files %}
+              <tr>
+                <td>
+                  {% if file.filename.endswith('.pdf') %}
+                  <i class="fas fa-file-pdf text-danger me-2"></i>
+                  {% elif file.filename.endswith('.xlsx') or
+                  file.filename.endswith('.xls') %}
+                  <i class="fas fa-file-excel text-success me-2"></i>
+                  {% elif file.filename.endswith('.docx') or
+                  file.filename.endswith('.doc') %}
+                  <i class="fas fa-file-word text-primary me-2"></i>
+                  {% else %}
+                  <i class="fas fa-file text-secondary me-2"></i>
+                  {% endif %}
+
+                  <span class="file-name">{{ file.filename }}</span>
+
+                  {% if 'shopify' in file.filename.lower() %}
+                  <span class="badge bg-info ms-2">Shopify</span>
+                  {% endif %}
+                </td>
+
+                <td>{{ file.size_formatted }}</td>
+
+                <td>{{ file.created_at }}</td>
+
+                <td>
+                  {% if file.filename.endswith('.pdf') %}
+                  <span class="badge bg-danger">PDF</span>
+                  {% elif file.filename.endswith('.xlsx') or
+                  file.filename.endswith('.xls') %}
+                  <span class="badge bg-success">Excel</span>
+                  {% elif file.filename.endswith('.docx') or
+                  file.filename.endswith('.doc') %}
+                  <span class="badge bg-primary">Word</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Другой</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <span class="badge bg-success">
+                    <i class="fas fa-check me-1"></i>
+                    Обработан
+                  </span>
+                </td>
+
+                <td>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button
+                      class="btn btn-outline-primary"
+                      onclick="viewFile('{{ file.filepath }}')"
+                      title="Просмотреть"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button
+                      class="btn btn-outline-success"
+                      onclick="downloadFile('{{ file.filepath }}')"
+                      title="Скачать"
+                    >
+                      <i class="fas fa-download"></i>
+                    </button>
+                    <button
+                      class="btn btn-outline-info"
+                      onclick="analyzeFile('{{ file.filepath }}')"
+                      title="Анализ"
+                    >
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-outline-secondary btn-sm"
+                    onclick="openParsedData('{{ file.filepath }}')"
+                    title="Данные"
+                  >
+                    <i class="fas fa-code"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card-body text-center py-5">
+        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+        <h5 class="text-muted">Файлы не найдены</h5>
+        <p class="text-muted">Обработанные файлы будут отображены здесь</p>
+        <a href="/" class="btn btn-primary">
+          <i class="fas fa-arrow-left me-2"></i>
+          Вернуться к дашборду
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно для просмотра файла -->
+<div
+  class="modal fade"
+  id="fileViewModal"
+  tabindex="-1"
+  aria-labelledby="fileViewModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="fileViewModalLabel">
+          <i class="fas fa-file-alt me-2"></i>
+          Информация о файле
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div id="fileDetails">
+          <div class="text-center">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Закрыть
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="downloadCurrentFile()"
+        >
+          <i class="fas fa-download me-2"></i>
+          Скачать файл
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  let currentFilePath = null;
+
+  function refreshFiles() {
+    location.reload();
+  }
+
+  function viewFile(filepath) {
+    currentFilePath = filepath;
+    const modal = new bootstrap.Modal(document.getElementById("fileViewModal"));
+    modal.show();
+
+    // Загружаем информацию о файле
+    fetch("/api/v1/files/info?path=" + encodeURIComponent(filepath))
+      .then((response) => response.json())
+      .then((data) => {
+        const detailsDiv = document.getElementById("fileDetails");
+
+        if (data.success) {
+          detailsDiv.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Основная информация</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Имя файла:</strong></td><td>${data.filename}</td></tr>
+                                    <tr><td><strong>Размер:</strong></td><td>${data.size_formatted}</td></tr>
+                                    <tr><td><strong>Дата создания:</strong></td><td>${data.created_at}</td></tr>
+                                    <tr><td><strong>Тип MIME:</strong></td><td>${data.mime_type || "неизвестно"}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Обработка</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Статус:</strong></td><td><span class="badge bg-success">Обработан</span></td></tr>
+                                    <tr><td><strong>Парсер:</strong></td><td>Shopify PDF Parser</td></tr>
+                                    <tr><td><strong>Извлечено:</strong></td><td>${data.extracted_data || "Данные не найдены"}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+        } else {
+          detailsDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Не удалось загрузить информацию о файле: ${data.error}
+                        </div>
+                    `;
+        }
+      })
+      .catch((err) => {
+        document.getElementById("fileDetails").innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Ошибка загрузки: ${err.message}
+                    </div>
+                `;
+      });
+  }
+
+  function downloadFile(filepath) {
+    // Создаем скрытую ссылку для скачивания
+    const link = document.createElement("a");
+    link.href = "/api/v1/files/download?path=" + encodeURIComponent(filepath);
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function downloadCurrentFile() {
+    if (currentFilePath) {
+      downloadFile(currentFilePath);
+    }
+  }
+
+  function analyzeFile(filepath) {
+    // Открываем анализ файла в новом окне
+    window.open(
+      "/api/v1/files/analyze?path=" + encodeURIComponent(filepath),
+      "_blank",
+    );
+  }
+
+  function openParsedData(filepath) {
+    const parsedPath = filepath.replace(/\.[^/.]+$/, ".parsed.json");
+    window.open(
+      "/api/v1/files/view/" + encodeURIComponent(parsedPath),
+      "_blank",
+    );
+  }
+
+  function cleanupFiles() {
+    if (
+      confirm("Удалить файлы старше 30 дней? Это действие нельзя отменить.")
+    ) {
+      fetch("/api/v1/files/cleanup", {
+        method: "POST",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          alert("Очистка завершена: " + data.message);
+          location.reload();
+        })
+        .catch((err) => {
+          alert("Ошибка очистки: " + err.message);
+        });
+    }
+  }
+</script>
+{% endblock %}
