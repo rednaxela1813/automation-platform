@@ -1,3 +1,6 @@
+# automation-platform/src/automation/ports/file_storage.py
+
+
 """
 Ports for file storage operations.
 Defines interfaces for secure storage and file quarantine.

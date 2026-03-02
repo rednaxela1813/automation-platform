@@ -1,8 +1,11 @@
+# automation-platform/src/automation/api/routers.py
+
 """API routes for Email Automation Platform."""
 
 from __future__ import annotations
 
 import imaplib
+import json
 import mimetypes
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -113,16 +116,17 @@ def _resolve_safe_file(path_value: str, settings: Settings) -> Path:
 
 @router.get("/files/safe")
 async def list_safe_files(
-    limit: int = 50,
+    limit: int | None = None,
     offset: int = 0,
     settings: Settings = Depends(get_settings),
 ):
     """List files from safe storage with pagination."""
+    page_limit = limit if limit is not None else settings.default_page_limit
     safe_dir = Path(settings.safe_storage_dir)
     if not safe_dir.exists():
         return {"files": [], "total": 0}
 
-    files = list(safe_dir.glob("*"))[offset : offset + limit]
+    files = list(safe_dir.glob("*"))[offset : offset + page_limit]
 
     file_info = []
     for file in files:
@@ -191,6 +195,35 @@ async def file_info(
     }
 
 
+@router.get("/files/parsed")
+async def get_parsed_file_data(
+    path: str = Query(..., description="Relative path to source file in safe storage"),
+    settings: Settings = Depends(get_settings),
+):
+    """Return parsed JSON payload generated for a concrete source file."""
+    source_file_path = _resolve_safe_file(path, settings)
+    parsed_file_path = source_file_path.with_suffix(".parsed.json")
+
+    if not parsed_file_path.exists() or not parsed_file_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Parsed JSON is not available for file '{source_file_path.name}'",
+        )
+
+    try:
+        with open(parsed_file_path, "r", encoding="utf-8") as fh:
+            parsed_payload = json.load(fh)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read parsed JSON: {str(exc)}")
+
+    return {
+        "success": True,
+        "source_file": source_file_path.name,
+        "parsed_file": parsed_file_path.name,
+        "data": parsed_payload,
+    }
+
+
 @router.get("/files/analyze")
 async def analyze_file(
     path: str = Query(..., description="Relative path to safe storage file"),
@@ -203,12 +236,12 @@ async def analyze_file(
 
 @router.post("/files/cleanup")
 async def cleanup_old_files(settings: Settings = Depends(get_settings)):
-    """Delete files from safe storage older than 30 days."""
+    """Delete files from safe storage older than configured retention period."""
     safe_dir = Path(settings.safe_storage_dir)
     if not safe_dir.exists():
         return {"message": "Safe storage directory not found", "files_removed": 0}
 
-    cutoff = datetime.now() - timedelta(days=30)
+    cutoff = datetime.now() - timedelta(days=settings.cleanup_days_old)
     removed = 0
     for file_path in safe_dir.iterdir():
         if not file_path.is_file():
@@ -225,16 +258,17 @@ async def cleanup_old_files(settings: Settings = Depends(get_settings)):
 
 @router.get("/files/quarantine")
 async def list_quarantine_files(
-    limit: int = 50,
+    limit: int | None = None,
     offset: int = 0,
     settings: Settings = Depends(get_settings),
 ):
     """List quarantine files with pagination."""
+    page_limit = limit if limit is not None else settings.default_page_limit
     quarantine_dir = Path(settings.quarantine_dir)
     if not quarantine_dir.exists():
         return {"files": [], "total": 0}
 
-    files = list(quarantine_dir.glob("*"))[offset : offset + limit]
+    files = list(quarantine_dir.glob("*"))[offset : offset + page_limit]
 
     file_info = []
     for file in files:
@@ -311,7 +345,7 @@ async def test_imap_connection(
     try:
         req = request or TestConnectionRequest()
         host = req.imap_host or settings.imap_host
-        port = req.imap_port or 993
+        port = req.imap_port or settings.imap_port
         username = req.imap_username or settings.imap_user
         password = req.imap_password or settings.imap_password
         mailbox = req.imap_mailbox or settings.imap_mailbox

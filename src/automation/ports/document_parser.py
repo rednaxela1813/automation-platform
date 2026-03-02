@@ -1,3 +1,5 @@
+# automation-platform/src/automation/ports/document_parser.py
+
 """
 Ports for document parsing.
 Defines interfaces for extracting data from various file types.

@@ -1,3 +1,5 @@
+# automation-platform/src/automation/ports/email.py
+
 """
 Ports for email processing.
 Defines interfaces for working with email messages and attachments.

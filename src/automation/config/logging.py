@@ -1,3 +1,5 @@
+# automation-platform/src/automation/config/logging.py
+
 """
 Logging setup for Email Automation Platform
 """
@@ -74,5 +76,5 @@ def get_logger(name: str = "automation") -> logging.Logger:
 
 
 # Configure logging at module import
-log_file = Path("logs/automation.log") if not settings.debug else None
+log_file = Path(settings.log_dir) / "automation.log" if not settings.debug else None
 setup_logging(log_level="DEBUG" if settings.debug else "INFO", log_file=log_file)

@@ -7,11 +7,13 @@ from __future__ import annotations
 from celery import Celery
 from celery.schedules import crontab
 
+from automation.config.settings import settings
+
 # Create Celery instance
 celery_app = Celery(
     "automation",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0",
+    broker=settings.redis_url,
+    backend=settings.redis_url,
     include=[
         "automation.tasks.email_processing",
         "automation.tasks.file_cleanup",
@@ -44,10 +46,10 @@ celery_app.conf.update(
     },
     # Periodic tasks (Celery Beat)
     beat_schedule={
-        # Check new email every 5 minutes
+        # Check new email with configured scan interval
         "process-new-emails": {
             "task": "automation.tasks.email_processing.process_new_emails_task",
-            "schedule": crontab(minute="*/5"),
+            "schedule": crontab(minute=f"*/{settings.scan_interval_minutes}"),
             "options": {"queue": "email_processing"},
         },
         # Clean old files daily at 2:00

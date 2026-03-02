@@ -298,9 +298,8 @@
   }
 
   function openParsedData(filepath) {
-    const parsedPath = filepath.replace(/\.[^/.]+$/, ".parsed.json");
     window.open(
-      "/api/v1/files/view/" + encodeURIComponent(parsedPath),
+      "/api/v1/files/parsed?path=" + encodeURIComponent(filepath),
       "_blank",
     );
   }

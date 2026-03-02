@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import imaplib
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -36,6 +37,16 @@ class FileInfo(BaseModel):
     size: int
     size_formatted: str
     created_at: str
+
+
+class QuarantineFileInfo(BaseModel):
+    """View model for quarantine file list rendering."""
+
+    filename: str
+    size: int
+    size_formatted: str
+    created_at: str
+    quarantine_reason: str
 
 
 def get_web_stats() -> WebStats:
@@ -118,17 +129,65 @@ def get_recent_files(limit: int = 5) -> List[FileInfo]:
     return files
 
 
+def get_recent_quarantine_files(limit: int = 5) -> List[QuarantineFileInfo]:
+    """Return latest files from quarantine storage."""
+    files: List[QuarantineFileInfo] = []
+    try:
+        quarantine_storage = Path(settings.quarantine_dir)
+        if not quarantine_storage.exists():
+            return files
+
+        all_files = [
+            f
+            for f in quarantine_storage.iterdir()
+            if f.is_file() and not f.name.endswith(".quarantine_info.json")
+        ]
+        all_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+
+        for file_path in all_files[:limit]:
+            stat = file_path.stat()
+            size_mb = stat.st_size / 1024 / 1024
+            size_formatted = f"{size_mb:.1f} MB" if size_mb > 1 else f"{stat.st_size // 1024} KB"
+            created_at = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
+
+            quarantine_reason = "Unknown"
+            info_path = file_path.with_suffix(".quarantine_info.json")
+            if info_path.exists():
+                try:
+                    with open(info_path, "r", encoding="utf-8") as fh:
+                        info = json.load(fh)
+                    quarantine_reason = info.get("quarantine_reason", quarantine_reason)
+                except (OSError, ValueError):
+                    pass
+
+            files.append(
+                QuarantineFileInfo(
+                    filename=file_path.name,
+                    size=stat.st_size,
+                    size_formatted=size_formatted,
+                    created_at=created_at,
+                    quarantine_reason=quarantine_reason,
+                )
+            )
+    except Exception as exc:
+        print(f"Error getting recent quarantine files: {exc}")
+
+    return files
+
+
 @web_router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Render dashboard page."""
     stats = get_web_stats()
     config = {
         "imap_host": settings.imap_host,
+        "imap_port": settings.imap_port,
         "imap_mailbox": settings.imap_mailbox,
-        "max_file_size_mb": 50,
-        "allowed_extensions": ["pdf", "xlsx", "docx"],
+        "max_file_size_mb": settings.max_file_size_mb,
+        "allowed_extensions": [ext.lstrip(".") for ext in settings.allowed_file_extensions],
     }
     recent_files = get_recent_files(5)
+    quarantine_files = get_recent_quarantine_files(5)
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -139,6 +198,7 @@ async def dashboard(request: Request):
             "stats": stats.dict(),
             "config": config,
             "recent_files": recent_files,
+            "quarantine_files": quarantine_files,
         },
     )
 
@@ -148,13 +208,13 @@ async def settings_page(request: Request):
     """Render settings page."""
     config = {
         "imap_host": settings.imap_host,
-        "imap_port": 993,
+        "imap_port": settings.imap_port,
         "imap_username": settings.imap_user,
         "imap_mailbox": settings.imap_mailbox,
-        "max_file_size_mb": 50,
-        "allowed_extensions": ["pdf", "xlsx", "docx"],
-        "storage_path": "./storage",
-        "scan_interval_minutes": 30,
+        "max_file_size_mb": settings.max_file_size_mb,
+        "allowed_extensions": [ext.lstrip(".") for ext in settings.allowed_file_extensions],
+        "storage_path": str(Path(settings.safe_storage_dir).parent),
+        "scan_interval_minutes": settings.scan_interval_minutes,
         "auto_processing": False,
         "enable_quarantine": True,
     }
@@ -173,7 +233,7 @@ async def settings_page(request: Request):
 @web_router.get("/files", response_class=HTMLResponse)
 async def files_page(request: Request):
     """Render files page."""
-    all_files = get_recent_files(50)
+    all_files = get_recent_files(settings.default_page_limit)
     pdf_count = sum(1 for f in all_files if f.filename.lower().endswith(".pdf"))
 
     return templates.TemplateResponse(
@@ -252,7 +312,7 @@ async def test_connection_web(
     """Test IMAP connection with provided form values."""
     try:
         host = imap_host or settings.imap_host
-        port = imap_port or 993
+        port = imap_port or settings.imap_port
         username = imap_username or settings.imap_user
         password = imap_password or settings.imap_password
         mailbox = imap_mailbox or settings.imap_mailbox

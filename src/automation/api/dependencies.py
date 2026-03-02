@@ -1,3 +1,5 @@
+# autmation-platform/src/automation/api/dependencies.py
+
 """FastAPI dependency providers for application services."""
 
 from __future__ import annotations

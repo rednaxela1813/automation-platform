@@ -248,12 +248,22 @@
                   <span class="badge bg-success status-badge"> Processed </span>
                 </td>
                 <td>
-                  <button
-                    class="btn btn-outline-primary btn-sm"
-                    onclick="viewFile('{{ file.filepath }}')"
-                  >
-                    <i class="fas fa-eye"></i>
-                  </button>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button
+                      class="btn btn-outline-primary"
+                      onclick="viewFile('{{ file.filepath }}')"
+                      title="View file"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button
+                      class="btn btn-outline-secondary"
+                      onclick="openParsedData('{{ file.filepath }}')"
+                      title="View parsed JSON"
+                    >
+                      <i class="fas fa-code"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
               {% endfor %}
@@ -271,11 +281,98 @@
     </div>
   </div>
 </div>
+
+<!-- Quarantine files -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card border-warning">
+      <div
+        class="card-header d-flex justify-content-between align-items-center bg-warning bg-opacity-10"
+      >
+        <h6 class="mb-0">
+          <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+          Recent quarantine files
+        </h6>
+        <a href="/api/v1/files/quarantine" class="btn btn-outline-warning btn-sm">
+          Open full list
+        </a>
+      </div>
+
+      {% if quarantine_files %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>File name</th>
+                <th>Size</th>
+                <th>Quarantined at</th>
+                <th>Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for file in quarantine_files %}
+              <tr>
+                <td>
+                  <i class="fas fa-file-circle-xmark text-warning me-2"></i>
+                  {{ file.filename }}
+                </td>
+                <td>{{ file.size_formatted }}</td>
+                <td>{{ file.created_at }}</td>
+                <td>
+                  <small class="text-muted">{{ file.quarantine_reason }}</small>
+                </td>
+                <td>
+                  <button
+                    class="btn btn-outline-danger btn-sm"
+                    onclick="deleteQuarantineFile('{{ file.filename }}')"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted">
+        <i class="fas fa-shield-check fa-2x mb-2"></i>
+        <p class="mb-0">No quarantine files</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %} {% block scripts %}
 <script>
   function viewFile(filepath) {
     // Open file in new window or show info
     window.open("/api/v1/files/view/" + encodeURIComponent(filepath), "_blank");
+  }
+
+  function openParsedData(filepath) {
+    window.open(
+      "/api/v1/files/parsed?path=" + encodeURIComponent(filepath),
+      "_blank",
+    );
+  }
+
+  function deleteQuarantineFile(filename) {
+    if (!confirm(`Delete quarantine file '${filename}'?`)) return;
+    fetch(`/api/v1/files/quarantine/${encodeURIComponent(filename)}`, {
+      method: "DELETE",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(() => location.reload())
+      .catch((err) => alert(`Failed to delete file: ${err.message}`));
   }
 </script>
 {% endblock %}

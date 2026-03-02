@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# automation-platform/run.py
+
 """
 Script to run the Email Automation Platform FastAPI server
 """

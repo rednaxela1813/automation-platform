@@ -1,3 +1,5 @@
+# automation-platform/src/automation/tasks/email_processing.py
+
 """
 Background tasks for email processing
 """

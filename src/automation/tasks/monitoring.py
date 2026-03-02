@@ -248,7 +248,7 @@ def generate_daily_metrics_task() -> Dict[str, Any]:
 def alert_on_errors_task(threshold: int = 5) -> Dict[str, Any]:
     """Alert when error count in logs exceeds threshold for the last hour."""
     try:
-        log_file = Path("logs/automation.log")
+        log_file = Path(settings.log_dir) / "automation.log"
 
         if not log_file.exists():
             return {"status": "ok", "message": "No log file found"}

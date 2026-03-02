@@ -1,3 +1,5 @@
+# automation-platform/src/automation/config/settings.py
+
 from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +10,7 @@ class Settings(BaseSettings):
     imap_host: str
     imap_user: str
     imap_password: str
+    imap_port: int = 993
     imap_mailbox: str = "INBOX"
 
     # FastAPI settings
@@ -21,13 +24,20 @@ class Settings(BaseSettings):
     safe_storage_dir: str = "./storage/safe"
     quarantine_dir: str = "./storage/quarantine"
     max_file_size_mb: int = 50
+    log_dir: str = "./logs"
 
     # Database
     database_url: str = "sqlite:///emails.db"
+    redis_url: str = "redis://localhost:6379/0"
 
     # API settings
     api_endpoint: str = ""
     api_key: str = ""
+    default_page_limit: int = 50
+    cleanup_days_old: int = 30
+    quarantine_days_old: int = 7
+    logs_retention_days: int = 90
+    archive_days_old: int = 90
 
     # Security
     allowed_file_extensions: list[str] = [".pdf", ".xlsx", ".docx", ".xml"]

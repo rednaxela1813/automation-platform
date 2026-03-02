@@ -1,3 +1,5 @@
+# automation-platform/src/automation/app/use_cases.py
+
 """Application use cases for email and invoice processing."""
 
 from __future__ import annotations
@@ -137,7 +139,7 @@ class EmailProcessingUseCase:
 
             parsed_path = file_path.with_suffix(".parsed.json")
             with open(parsed_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2, ensure_ascii=False)
+                json.dump(payload, f, indent=2, ensure_ascii=False, default=str)
         except Exception:
             # Parse-result persistence must never break the main processing flow.
             return

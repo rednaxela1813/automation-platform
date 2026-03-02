@@ -1,3 +1,5 @@
+# automation-platform/src/automation/tasks/file_cleanup.py
+
 """
 Background tasks for file cleanup
 """
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def cleanup_old_files_task(days_old: int = 30) -> Dict[str, Any]:
+def cleanup_old_files_task(days_old: int | None = None) -> Dict[str, Any]:
     """
     Task for cleaning old files from storage
 
@@ -24,23 +26,24 @@ def cleanup_old_files_task(days_old: int = 30) -> Dict[str, Any]:
         days_old: File age in days for deletion
     """
     try:
-        logger.info(f"Starting file cleanup for files older than {days_old} days")
+        effective_days_old = days_old if days_old is not None else settings.cleanup_days_old
+        logger.info(f"Starting file cleanup for files older than {effective_days_old} days")
 
-        cutoff_date = datetime.now() - timedelta(days=days_old)
+        cutoff_date = datetime.now() - timedelta(days=effective_days_old)
 
         # Clean safe storage
         safe_storage_dir = Path(settings.safe_storage_dir)
         cleaned_safe = _cleanup_directory(safe_storage_dir, cutoff_date)
 
-        # Clean quarantine (more aggressive cleanup - 7 days)
+        # Clean quarantine with configured retention period.
         quarantine_dir = Path(settings.quarantine_dir)
-        quarantine_cutoff = datetime.now() - timedelta(days=7)
+        quarantine_cutoff = datetime.now() - timedelta(days=settings.quarantine_days_old)
         cleaned_quarantine = _cleanup_directory(quarantine_dir, quarantine_cutoff)
 
-        # Clean logs (older than 90 days)
-        logs_dir = Path("logs")
+        # Clean logs with configured retention period.
+        logs_dir = Path(settings.log_dir)
         if logs_dir.exists():
-            logs_cutoff = datetime.now() - timedelta(days=90)
+            logs_cutoff = datetime.now() - timedelta(days=settings.logs_retention_days)
             cleaned_logs = _cleanup_directory(logs_dir, logs_cutoff, "*.log.*")
         else:
             cleaned_logs = {"files_removed": 0, "space_freed": 0}
@@ -131,13 +134,13 @@ def _cleanup_directory(
 def cleanup_quarantine_task() -> Dict[str, Any]:
     """
     Special task for quarantine cleanup
-    Deletes files older than 3 days
+    Deletes files older than configured quarantine retention period.
     """
     try:
         logger.info("Starting quarantine cleanup")
 
         quarantine_dir = Path(settings.quarantine_dir)
-        cutoff_date = datetime.now() - timedelta(days=3)
+        cutoff_date = datetime.now() - timedelta(days=settings.quarantine_days_old)
 
         result = _cleanup_directory(quarantine_dir, cutoff_date)
 
@@ -151,18 +154,23 @@ def cleanup_quarantine_task() -> Dict[str, Any]:
 
 
 @celery_app.task
-def archive_processed_files_task(archive_days: int = 90) -> Dict[str, Any]:
+def archive_processed_files_task(archive_days: int | None = None) -> Dict[str, Any]:
     """
     Archive processed files older than archive_days days
     """
     try:
-        logger.info(f"Starting file archiving for files older than {archive_days} days")
+        effective_archive_days = (
+            archive_days if archive_days is not None else settings.archive_days_old
+        )
+        logger.info(
+            f"Starting file archiving for files older than {effective_archive_days} days"
+        )
 
         safe_storage_dir = Path(settings.safe_storage_dir)
         archive_dir = safe_storage_dir.parent / "archive"
         archive_dir.mkdir(exist_ok=True)
 
-        cutoff_date = datetime.now() - timedelta(days=archive_days)
+        cutoff_date = datetime.now() - timedelta(days=effective_archive_days)
 
         files_archived = 0
 

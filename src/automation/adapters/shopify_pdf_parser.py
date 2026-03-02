@@ -100,6 +100,7 @@ class ShopifyPdfInvoiceParser:
 
             # 5) Description (simple)
             invoice_data["description"] = self._extract_description(lines)
+            invoice_data["line_items"] = self._extract_line_items(lines)
 
             # Validate required fields
             if invoice_data["invoice_number"] and invoice_data["amount"]:
@@ -111,13 +112,16 @@ class ShopifyPdfInvoiceParser:
                         else datetime.now().date()
                     )
 
-                    return Invoice(
-                        partner_id=invoice_data["partner_id"] or "unknown_partner",
-                        invoice_number=invoice_data["invoice_number"],
-                        invoice_date=invoice_date,
-                        amount=amount_decimal,
-                        currency=invoice_data["currency"] or "EUR",
-                        source_message_id=source_filename,
+                    return (
+                        Invoice(
+                            partner_id=invoice_data["partner_id"] or "unknown_partner",
+                            invoice_number=invoice_data["invoice_number"],
+                            invoice_date=invoice_date,
+                            amount=amount_decimal,
+                            currency=invoice_data["currency"] or "EUR",
+                            source_message_id=source_filename,
+                        ),
+                        invoice_data,
                     )
                 except (ValueError, TypeError, InvalidOperation) as e:
                     print(f"❌ Invoice creation error: {e}")
@@ -281,6 +285,11 @@ class ShopifyPdfInvoiceParser:
         return None
 
     def _extract_description(self, lines: list[str]) -> str:
+        # Prefer explicit plan/item lines from detailed view.
+        for line in lines:
+            if "plan" in line.lower() and re.search(r"[€$£¥₽]\s*[0-9]", line):
+                return line
+
         for i, line in enumerate(lines):
             if "OVERVIEW" in line.upper() and i + 1 < len(lines):
                 company_line = lines[i + 1]
@@ -290,6 +299,24 @@ class ShopifyPdfInvoiceParser:
                 if company_clean and not company_clean.startswith("€"):
                     return f"Shopify subscription: {company_clean}"
         return ""
+
+    def _extract_line_items(self, lines: list[str]) -> list[str]:
+        items: list[str] = []
+        skip_prefixes = ("subtotal", "total", "vat", "credit")
+        for line in lines:
+            low = line.lower()
+            if low.startswith(skip_prefixes):
+                continue
+            if re.search(r"[€$£¥₽]\s*[0-9]", line):
+                items.append(line)
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for item in items:
+            if item not in seen:
+                seen.add(item)
+                deduped.append(item)
+        return deduped
 
     def _parse_date(self, date_str: str):
         """Parse date from multiple formats."""
