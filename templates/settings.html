@@ -5,20 +5,20 @@
       <div class="card-header">
         <h5 class="mb-0">
           <i class="fas fa-cog me-2"></i>
-          Настройки системы
+          System Settings
         </h5>
       </div>
       <div class="card-body">
         <form id="settingsForm" onsubmit="saveSettings(event)">
-          <!-- IMAP настройки -->
+          <!-- IMAP Settings -->
           <h6 class="text-primary mb-3">
             <i class="fas fa-envelope-open-text me-2"></i>
-            Настройки почты
+            Mail Settings
           </h6>
 
           <div class="row mb-3">
             <div class="col-md-6">
-              <label for="imapHost" class="form-label">IMAP хост</label>
+              <label for="imapHost" class="form-label">IMAP host</label>
               <input
                 type="text"
                 class="form-control"
@@ -28,7 +28,7 @@
               />
             </div>
             <div class="col-md-6">
-              <label for="imapPort" class="form-label">IMAP порт</label>
+              <label for="imapPort" class="form-label">IMAP port</label>
               <input
                 type="number"
                 class="form-control"
@@ -41,7 +41,7 @@
 
           <div class="row mb-3">
             <div class="col-md-6">
-              <label for="imapUsername" class="form-label">Email адрес</label>
+              <label for="imapUsername" class="form-label">Email address</label>
               <input
                 type="email"
                 class="form-control"
@@ -51,13 +51,13 @@
               />
             </div>
             <div class="col-md-6">
-              <label for="imapPassword" class="form-label">Пароль</label>
+              <label for="imapPassword" class="form-label">Password</label>
               <div class="input-group">
                 <input
                   type="password"
                   class="form-control"
                   id="imapPassword"
-                  placeholder="Введите новый пароль..."
+                  placeholder="Enter a new password..."
                 />
                 <button
                   class="btn btn-outline-secondary"
@@ -68,13 +68,13 @@
                 </button>
               </div>
               <small class="form-text text-muted"
-                >Оставьте пустым, если не хотите менять</small
+                >Leave empty if you do not want to change it</small
               >
             </div>
           </div>
 
           <div class="mb-3">
-            <label for="imapMailbox" class="form-label">Почтовый ящик</label>
+            <label for="imapMailbox" class="form-label">Mailbox</label>
             <input
               type="text"
               class="form-control"
@@ -83,22 +83,22 @@
               required
             />
             <small class="form-text text-muted"
-              >Обычно 'INBOX' для входящих</small
+              >Usually 'INBOX' for incoming mail</small
             >
           </div>
 
           <hr />
 
-          <!-- Настройки файлов -->
+          <!-- File Settings -->
           <h6 class="text-primary mb-3">
             <i class="fas fa-file-alt me-2"></i>
-            Настройки файлов
+            File Settings
           </h6>
 
           <div class="row mb-3">
             <div class="col-md-6">
               <label for="maxFileSize" class="form-label"
-                >Максимальный размер файла (MB)</label
+                >Maximum file size (MB)</label
               >
               <input
                 type="number"
@@ -112,7 +112,7 @@
             </div>
             <div class="col-md-6">
               <label for="allowedExtensions" class="form-label"
-                >Разрешенные расширения</label
+                >Allowed extensions</label
               >
               <input
                 type="text"
@@ -122,14 +122,14 @@
                 required
               />
               <small class="form-text text-muted"
-                >Через запятую: pdf, xlsx, docx</small
+                >Comma-separated: pdf, xlsx, docx</small
               >
             </div>
           </div>
 
           <div class="mb-3">
             <label for="storagePath" class="form-label"
-              >Путь для сохранения файлов</label
+              >Path for saved files</label
             >
             <input
               type="text"
@@ -142,16 +142,16 @@
 
           <hr />
 
-          <!-- Настройки обработки -->
+          <!-- Processing Settings -->
           <h6 class="text-primary mb-3">
             <i class="fas fa-cogs me-2"></i>
-            Настройки обработки
+            Processing Settings
           </h6>
 
           <div class="row mb-3">
             <div class="col-md-6">
               <label for="scanInterval" class="form-label"
-                >Интервал сканирования (минуты)</label
+                >Scan interval (minutes)</label
               >
               <input
                 type="number"
@@ -165,7 +165,7 @@
             </div>
             <div class="col-md-6">
               <label for="autoProcessing" class="form-label"
-                >Автоматическая обработка</label
+                >Automatic processing</label
               >
               <select class="form-control" id="autoProcessing">
                 <option
@@ -177,7 +177,7 @@
                   endif
                   %}
                 >
-                  Включена
+                  Enabled
                 </option>
                 <option
                   value="false"
@@ -189,7 +189,7 @@
                   endif
                   %}
                 >
-                  Выключена
+                  Disabled
                 </option>
               </select>
             </div>
@@ -209,12 +209,12 @@
                 %}
               />
               <label class="form-check-label" for="enableQuarantine">
-                Включить карантин для подозрительных файлов
+                Enable quarantine for suspicious files
               </label>
             </div>
           </div>
 
-          <!-- Кнопки управления -->
+          <!-- Controls -->
           <div class="d-flex justify-content-between">
             <button
               type="button"
@@ -222,7 +222,7 @@
               onclick="testConnection()"
             >
               <i class="fas fa-plug me-2"></i>
-              Тестировать подключение
+              Test connection
             </button>
 
             <div>
@@ -232,11 +232,11 @@
                 onclick="resetToDefaults()"
               >
                 <i class="fas fa-undo me-2"></i>
-                Сбросить к умолчанию
+                Reset to defaults
               </button>
               <button type="submit" class="btn btn-success">
                 <i class="fas fa-save me-2"></i>
-                Сохранить настройки
+                Save settings
               </button>
             </div>
           </div>
@@ -246,50 +246,50 @@
   </div>
 
   <div class="col-md-4">
-    <!-- Справка по настройкам -->
+    <!-- Settings Help -->
     <div class="card mb-4">
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-info-circle me-2"></i>
-          Справка
+          Help
         </h6>
       </div>
       <div class="card-body">
-        <h6 class="text-primary">IMAP настройки</h6>
+        <h6 class="text-primary">IMAP Settings</h6>
         <p class="small text-muted mb-2">
-          Для подключения к почтовому ящику используется протокол IMAP.
-          Убедитесь, что IMAP включен в настройках вашей почты.
+          The application connects to your mailbox over IMAP.
+          Make sure IMAP access is enabled in your email provider settings.
         </p>
 
-        <h6 class="text-primary">Популярные провайдеры</h6>
+        <h6 class="text-primary">Popular providers</h6>
         <div class="small text-muted">
           <strong>Gmail:</strong> imap.gmail.com:993<br />
           <strong>Outlook:</strong> imap-mail.outlook.com:993<br />
           <strong>A2Hosting:</strong> mail.yourdomain.com:993<br />
-          <strong>Яндекс:</strong> imap.yandex.ru:993
+          <strong>Yandex:</strong> imap.yandex.ru:993
         </div>
       </div>
     </div>
 
-    <!-- Текущее подключение -->
+    <!-- Current connection -->
     <div class="card">
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-link me-2"></i>
-          Статус подключения
+          Connection status
         </h6>
       </div>
       <div class="card-body">
         <div id="connectionStatus">
           <div class="text-center">
             <i class="fas fa-question-circle fa-2x text-muted mb-2"></i>
-            <p class="text-muted">Статус неизвестен</p>
+            <p class="text-muted">Status unknown</p>
             <button
               type="button"
               class="btn btn-outline-primary btn-sm"
               onclick="checkConnectionStatus()"
             >
-              Проверить
+              Check
             </button>
           </div>
         </div>
@@ -298,12 +298,12 @@
   </div>
 </div>
 
-<!-- Модальное окно с результатами тестирования -->
+<!-- Test result modal -->
 <div class="modal fade" id="testModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Результат тестирования</h5>
+        <h5 class="modal-title">Test Result</h5>
         <button
           type="button"
           class="btn-close"
@@ -314,15 +314,15 @@
         <div id="testResults">
           <div class="text-center">
             <div class="spinner-border" role="status">
-              <span class="visually-hidden">Тестирование...</span>
+              <span class="visually-hidden">Testing...</span>
             </div>
-            <p class="mt-2">Проверяем подключение...</p>
+            <p class="mt-2">Checking connection...</p>
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Закрыть
+          Close
         </button>
       </div>
     </div>
@@ -347,7 +347,7 @@
     const modal = new bootstrap.Modal(document.getElementById("testModal"));
     modal.show();
 
-    // Собираем данные формы для тестирования
+    // Collecting form data for testing
     const testData = {
       imap_host: document.getElementById("imapHost").value,
       imap_port: parseInt(document.getElementById("imapPort").value),
@@ -370,7 +370,7 @@
           resultsDiv.innerHTML = `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
-                        <strong>Подключение успешно!</strong><br>
+                        <strong>Connection successful!</strong><br>
                         ${data.message}
                     </div>
                 `;
@@ -378,7 +378,7 @@
           resultsDiv.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>
-                        <strong>Ошибка подключения:</strong><br>
+                        <strong>Connection error:</strong><br>
                         ${data.error}
                     </div>
                 `;
@@ -388,7 +388,7 @@
         document.getElementById("testResults").innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-times-circle me-2"></i>
-                    <strong>Ошибка тестирования:</strong><br>
+                    <strong>Test error:</strong><br>
                     ${err.message}
                 </div>
             `;
@@ -417,7 +417,7 @@
       enable_quarantine: document.getElementById("enableQuarantine").checked,
     };
 
-    // Добавляем пароль только если он заполнен
+    // Add password only if provided
     const password = document.getElementById("imapPassword").value;
     if (password.trim()) {
       formData.imap_password = password;
@@ -433,29 +433,29 @@
       .then((response) => response.json())
       .then((data) => {
         if (data.success) {
-          alert("Настройки сохранены успешно!");
+          alert("Settings saved successfully!");
           location.reload();
         } else {
-          alert("Ошибка сохранения: " + (data.error || "Неизвестная ошибка"));
+          alert("Save error: " + (data.error || "Unknown error"));
         }
       })
       .catch((err) => {
-        alert("Ошибка: " + err.message);
+        alert("Error: " + err.message);
       });
   }
 
   function resetToDefaults() {
-    if (confirm("Сбросить все настройки к значениям по умолчанию?")) {
+    if (confirm("Reset all settings to default values?")) {
       fetch("/api/v1/settings/reset", {
         method: "POST",
       })
         .then((response) => response.json())
         .then((data) => {
-          alert("Настройки сброшены к умолчанию");
+          alert("Settings reset to defaults");
           location.reload();
         })
         .catch((err) => {
-          alert("Ошибка сброса: " + err.message);
+          alert("Reset error: " + err.message);
         });
     }
   }
@@ -469,26 +469,26 @@
           statusDiv.innerHTML = `
                     <div class="text-center text-success">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
-                        <p class="mb-1"><strong>Подключено</strong></p>
-                        <small class="text-muted">Последняя проверка: ${data.last_check}</small>
+                        <p class="mb-1"><strong>Connected</strong></p>
+                        <small class="text-muted">Last check: ${data.last_check}</small>
                     </div>
                 `;
         } else {
           statusDiv.innerHTML = `
                     <div class="text-center text-danger">
                         <i class="fas fa-times-circle fa-2x mb-2"></i>
-                        <p class="mb-1"><strong>Не подключено</strong></p>
-                        <small class="text-muted">${data.error || "Проверьте настройки"}</small>
+                        <p class="mb-1"><strong>Not connected</strong></p>
+                        <small class="text-muted">${data.error || "Check your settings"}</small>
                     </div>
                 `;
         }
       })
       .catch((err) => {
-        console.error("Ошибка проверки статуса:", err);
+        console.error("Status check error:", err);
       });
   }
 
-  // Проверяем статус при загрузке страницы
+  // Check status on page load
   document.addEventListener("DOMContentLoaded", function () {
     checkConnectionStatus();
   });

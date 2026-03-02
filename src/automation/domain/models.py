@@ -15,8 +15,8 @@ class InvoiceStatus(str, Enum):
     DONE = "done"
     FAILED = "failed"
     MISMATCH = "mismatch"
-    
-    
+
+
 @dataclass(frozen=True)
 class Invoice:
     partner_id: str

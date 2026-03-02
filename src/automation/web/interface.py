@@ -1,37 +1,36 @@
-"""
-Веб-интерфейс для управления Email Automation Platform
-"""
+"""Web interface routes for Email Automation Platform."""
+
 from __future__ import annotations
 
+import imaplib
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-import imaplib
 
 from automation.config.settings import settings
 
-
-# Инициализация templates
 templates = Jinja2Templates(directory="templates")
 web_router = APIRouter()
 
 
 class WebStats(BaseModel):
-    """Статистика для веб-интерфейса"""
+    """Summary statistics for dashboard widgets."""
+
     total_emails_processed: int = 0
     files_in_safe_storage: int = 0
     files_in_quarantine: int = 0
-    system_status: str = "Готов"
+    system_status: str = "Unknown"
     last_processing_time: Optional[datetime] = None
 
 
 class FileInfo(BaseModel):
-    """Информация о файле"""
+    """View model for file list rendering."""
+
     filename: str
     filepath: str
     size: int
@@ -40,7 +39,7 @@ class FileInfo(BaseModel):
 
 
 def get_web_stats() -> WebStats:
-    """Получить статистику для веб-интерфейса"""
+    """Calculate top-level dashboard statistics."""
     try:
         safe_storage = Path(settings.safe_storage_dir)
         quarantine_storage = Path(settings.quarantine_dir)
@@ -63,146 +62,159 @@ def get_web_stats() -> WebStats:
             if quarantine_storage.exists()
             else 0
         )
-        
+
         return WebStats(
-            total_emails_processed=safe_files + quarantine_files,  # Приблизительная оценка
+            total_emails_processed=safe_files + quarantine_files,
             files_in_safe_storage=safe_files,
             files_in_quarantine=quarantine_files,
-            system_status="Активен" if safe_files > 0 else "Готов",
-            last_processing_time=datetime.now() if safe_files > 0 else None
+            system_status="Active" if safe_files > 0 else "Ready",
+            last_processing_time=datetime.now() if safe_files > 0 else None,
         )
-    except Exception as e:
-        print(f"Ошибка получения статистики: {e}")
+    except Exception as exc:
+        print(f"Error getting web stats: {exc}")
         return WebStats()
 
 
 def get_recent_files(limit: int = 5) -> List[FileInfo]:
-    """Получить список последних файлов"""
-    files = []
+    """Return latest files from safe storage."""
+    files: List[FileInfo] = []
     try:
         safe_storage = Path(settings.safe_storage_dir)
         if not safe_storage.exists():
             return files
+
         allowed_extensions = {ext.lower() for ext in settings.allowed_file_extensions}
         all_files = [
-            f for f in safe_storage.iterdir()
+            f
+            for f in safe_storage.iterdir()
             if f.is_file() and f.suffix.lower() in allowed_extensions
         ]
         all_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-        
-        for file_path in all_files[:limit]:
-            if file_path.is_file():
-                stat = file_path.stat()
-                size_mb = stat.st_size / 1024 / 1024
 
-                try:
-                    relative_path = file_path.relative_to(safe_storage.parent)
-                except ValueError:
-                    relative_path = file_path
-                
-                files.append(FileInfo(
+        for file_path in all_files[:limit]:
+            stat = file_path.stat()
+            size_mb = stat.st_size / 1024 / 1024
+
+            try:
+                relative_path = file_path.relative_to(safe_storage.parent)
+            except ValueError:
+                relative_path = file_path
+
+            size_formatted = f"{size_mb:.1f} MB" if size_mb > 1 else f"{stat.st_size // 1024} KB"
+            created_at = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
+            files.append(
+                FileInfo(
                     filename=file_path.name,
                     filepath=str(relative_path),
                     size=stat.st_size,
-                    size_formatted=f"{size_mb:.1f} MB" if size_mb > 1 else f"{stat.st_size // 1024} KB",
-                    created_at=datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
-                ))
-        
-    except Exception as e:
-        print(f"Ошибка получения файлов: {e}")
-    
+                    size_formatted=size_formatted,
+                    created_at=created_at,
+                )
+            )
+
+    except Exception as exc:
+        print(f"Error getting recent files: {exc}")
+
     return files
 
 
 @web_router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """Главная страница дашборда"""
+    """Render dashboard page."""
     stats = get_web_stats()
     config = {
-        'imap_host': settings.imap_host,
-        'imap_mailbox': settings.imap_mailbox,
-        'max_file_size_mb': 50,  # Default value
-        'allowed_extensions': ['pdf', 'xlsx', 'docx']
+        "imap_host": settings.imap_host,
+        "imap_mailbox": settings.imap_mailbox,
+        "max_file_size_mb": 50,
+        "allowed_extensions": ["pdf", "xlsx", "docx"],
     }
     recent_files = get_recent_files(5)
-    
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "title": "Дашборд",
-        "current_page": "dashboard",
-        "stats": stats.dict(),
-        "config": config,
-        "recent_files": recent_files
-    })
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "title": "Dashboard",
+            "current_page": "dashboard",
+            "stats": stats.dict(),
+            "config": config,
+            "recent_files": recent_files,
+        },
+    )
 
 
 @web_router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    """Страница настроек"""
+    """Render settings page."""
     config = {
-        'imap_host': settings.imap_host,
-        'imap_port': 993,
-        'imap_username': settings.imap_user,
-        'imap_mailbox': settings.imap_mailbox,
-        'max_file_size_mb': 50,
-        'allowed_extensions': ['pdf', 'xlsx', 'docx'],
-        'storage_path': './storage',
-        'scan_interval_minutes': 30,
-        'auto_processing': False,
-        'enable_quarantine': True
+        "imap_host": settings.imap_host,
+        "imap_port": 993,
+        "imap_username": settings.imap_user,
+        "imap_mailbox": settings.imap_mailbox,
+        "max_file_size_mb": 50,
+        "allowed_extensions": ["pdf", "xlsx", "docx"],
+        "storage_path": "./storage",
+        "scan_interval_minutes": 30,
+        "auto_processing": False,
+        "enable_quarantine": True,
     }
-    
-    return templates.TemplateResponse("settings.html", {
-        "request": request,
-        "title": "Настройки",
-        "current_page": "settings",
-        "config": config
-    })
+
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "title": "Settings",
+            "current_page": "settings",
+            "config": config,
+        },
+    )
 
 
 @web_router.get("/files", response_class=HTMLResponse)
 async def files_page(request: Request):
-    """Страница со списком файлов"""
-    all_files = get_recent_files(50)  # Больше файлов на странице файлов
+    """Render files page."""
+    all_files = get_recent_files(50)
     pdf_count = sum(1 for f in all_files if f.filename.lower().endswith(".pdf"))
-    
-    return templates.TemplateResponse("files.html", {
-        "request": request,
-        "title": "Файлы",
-        "current_page": "files",
-        "files": all_files,
-        "pdf_count": pdf_count
-    })
+
+    return templates.TemplateResponse(
+        "files.html",
+        {
+            "request": request,
+            "title": "Files",
+            "current_page": "files",
+            "files": all_files,
+            "pdf_count": pdf_count,
+        },
+    )
 
 
-@web_router.get("/logs", response_class=HTMLResponse) 
+@web_router.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
-    """Страница логов"""
-    # Примерные логи для демонстрации
+    """Render logs page with sample log records."""
     now = datetime.now()
     logs = [
         {
             "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
             "level": "INFO",
-            "message": "Email processing completed: 4 messages processed"
+            "message": "Email processing completed: 4 messages processed",
         },
         {
             "timestamp": (now - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
             "level": "SUCCESS",
-            "message": "PDF file extracted: Novaglen_481474921.pdf (53KB)"
+            "message": "PDF file extracted: Novaglen_481474921.pdf (53KB)",
         },
         {
             "timestamp": (now - timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S"),
-            "level": "SUCCESS", 
-            "message": "PDF file extracted: Eyelashes_and_Beauty_481483348.pdf (52KB)"
+            "level": "SUCCESS",
+            "message": "PDF file extracted: Eyelashes_and_Beauty_481483348.pdf (52KB)",
         },
         {
             "timestamp": (now - timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
             "level": "INFO",
-            "message": "IMAP connection established to mail.deilmann.sk"
-        }
+            "message": "IMAP connection established to mail.deilmann.sk",
+        },
     ]
-    
+
     log_stats = {
         "ERROR": sum(1 for log in logs if log.get("level") == "ERROR"),
         "WARNING": sum(1 for log in logs if log.get("level") == "WARNING"),
@@ -210,19 +222,22 @@ async def logs_page(request: Request):
         "INFO": sum(1 for log in logs if log.get("level") == "INFO"),
     }
 
-    return templates.TemplateResponse("logs.html", {
-        "request": request,
-        "title": "Логи системы",
-        "current_page": "logs",
-        "logs": logs,
-        "log_stats": log_stats
-    })
+    return templates.TemplateResponse(
+        "logs.html",
+        {
+            "request": request,
+            "title": "System Logs",
+            "current_page": "logs",
+            "logs": logs,
+            "log_stats": log_stats,
+        },
+    )
 
 
-# API endpoints для веб-интерфейса
+# Web API endpoints
 @web_router.get("/api/web/stats")
 async def web_stats():
-    """API для получения статистики"""
+    """Return dashboard statistics as JSON."""
     return get_web_stats().dict()
 
 
@@ -232,9 +247,9 @@ async def test_connection_web(
     imap_port: int = Form(...),
     imap_username: str = Form(...),
     imap_mailbox: str = Form(...),
-    imap_password: str | None = Form(None)
+    imap_password: str | None = Form(None),
 ):
-    """Тестирование подключения к IMAP"""
+    """Test IMAP connection with provided form values."""
     try:
         host = imap_host or settings.imap_host
         port = imap_port or 993
@@ -243,53 +258,30 @@ async def test_connection_web(
         mailbox = imap_mailbox or settings.imap_mailbox
 
         if not host or not username or not password:
-            return {
-                "success": False,
-                "error": "IMAP credentials not provided"
-            }
+            return {"success": False, "error": "IMAP credentials not provided"}
 
         with imaplib.IMAP4_SSL(host, port) as imap:
             imap.login(username, password)
             status, _ = imap.select(mailbox)
             if status != "OK":
-                return {
-                    "success": False,
-                    "error": f"Failed to select mailbox '{mailbox}'"
-                }
+                return {"success": False, "error": f"Failed to select mailbox '{mailbox}'"}
 
         return {
             "success": True,
-            "message": f"Подключение к {host}:{port} успешно установлено. Найден ящик '{mailbox}'."
+            "message": f"Connection to {host}:{port} succeeded. Mailbox '{mailbox}' is available.",
         }
-    except imaplib.IMAP4.error as e:
-        return {
-            "success": False,
-            "error": f"IMAP auth failed: {str(e)}"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Не удалось подключиться к серверу: {str(e)}"
-        }
+    except imaplib.IMAP4.error as exc:
+        return {"success": False, "error": f"IMAP auth failed: {str(exc)}"}
+    except Exception as exc:
+        return {"success": False, "error": f"Connection test failed: {str(exc)}"}
 
 
 @web_router.get("/api/web/connection-status")
 async def connection_status_web():
-    """Проверка статуса подключения"""
+    """Return coarse connection status based on configured IMAP credentials."""
     try:
-        # Проверяем настройки
         if settings.imap_host and settings.imap_user:
-            return {
-                "connected": True,
-                "last_check": datetime.now().strftime("%H:%M:%S")
-            }
-        else:
-            return {
-                "connected": False,
-                "error": "Настройки подключения не заполнены"
-            }
-    except Exception as e:
-        return {
-            "connected": False,
-            "error": str(e)
-        }
+            return {"connected": True, "last_check": datetime.now().strftime("%H:%M:%S")}
+        return {"connected": False, "error": "Connection settings are incomplete"}
+    except Exception as exc:
+        return {"connected": False, "error": str(exc)}

@@ -1,132 +1,83 @@
 # Email Automation Platform
 
-🚀 **Автоматизированная система обработки электронной почты с вложениями**
+A practical application for processing incoming emails with attachments and turning inbox noise into structured, usable data.
 
-Система для автоматического получения писем, обработки вложений (PDF, Excel, Word, XML), безопасного хранения файлов и парсинга данных счетов.
+## Why this project exists
 
-## ⚡ Быстрый старт
+Many workflows have the same pain point: invoices, reports, and operational documents arrive by email and must be reviewed, saved, sorted, and entered manually into internal systems.
 
-### 1. Установка зависимостей
+This project addresses that flow end-to-end:
+- connects to an IMAP mailbox,
+- extracts attachments,
+- stores files safely,
+- parses invoice-like data from documents,
+- exposes everything through an API and web interface.
+
+## What it can do today
+
+At its current stage, the platform already supports a full baseline processing pipeline:
+
+1. Connects to a mailbox via IMAP.
+2. Fetches new emails and extracts attachments.
+3. Validates file types and size limits.
+4. Stores safe files in `safe` storage and suspicious files in `quarantine`.
+5. Parses PDF/Excel files and extracts invoice fields.
+6. Provides:
+   - REST API (FastAPI),
+   - web dashboard (status, files, logs, settings),
+   - background scheduling with Celery.
+
+## What it should do next
+
+The goal is to grow this into a genuinely convenient email-processing application, not just a demo.
+
+Near-term product direction:
+- higher parsing accuracy across more document layouts,
+- stronger duplicate/error handling,
+- more robust processing orchestration (queues, retries, monitoring),
+- better operator UX in the dashboard,
+- richer analytics and observability,
+- integrations with external systems (ERP/CRM/accounting).
+
+## Important context
+
+Even though this is currently a learning project, I treat it as preparation for a more serious product.
+
+It is meant to be a practical foundation:
+- to validate architecture decisions,
+- to test real workflow assumptions,
+- and to evolve step by step toward a production-grade solution.
+
+## Tech stack
+
+- Python + FastAPI
+- Celery (background tasks)
+- Redis (queue/broker)
+- SQLite (current stage)
+- Jinja2 templates (web UI)
+
+## Quick start
 
 ```bash
-# Клонируйте и перейдите в директорию проекта
-cd automation-platform
-
-# Установите зависимости
+# 1) Install
 pip install -e .
 
-# Или для разработки
-pip install -e ".[dev]"
-```
-
-### 2. Настройка окружения
-
-```bash
-# Скопируйте файл настроек
+# 2) Configure environment
 cp .env.example .env
+# fill in IMAP settings
 
-# Отредактируйте .env файл с вашими настройками IMAP
-nano .env
-```
-
-### 3. Запуск FastAPI сервера
-
-```bash
-# Запуск сервера
+# 3) Start API
 python run.py
 
-# Или через uvicorn напрямую
-uvicorn automation.main:app --reload --host 0.0.0.0 --port 8000
+# 4) (optional) start background workers
+celery -A automation.celery_app worker --loglevel=info
+celery -A automation.celery_app beat --loglevel=info
 ```
 
-### 4. Доступ к API
+API docs after startup:
+- `http://localhost:8000/docs`
+- `http://localhost:8000/redoc`
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **API Base**: http://localhost:8000/api/v1
+## Current status
 
-## 🛠 API Endpoints
-
-### 📧 Обработка почты
-
-- `POST /api/v1/emails/process` - Запустить обработку почты
-- `GET /api/v1/emails/status` - Статус обработки
-
-### 📁 Управление файлами
-
-- `GET /api/v1/files/safe` - Файлы в безопасном хранилище
-- `GET /api/v1/files/quarantine` - Файлы в карантине
-- `DELETE /api/v1/files/quarantine/{filename}` - Удалить из карантина
-
-### ⚙️ Система
-
-- `GET /api/v1/system/stats` - Статистика системы
-- `GET /api/v1/system/config` - Конфигурация
-- `POST /api/v1/system/test-connection` - Тест IMAP подключения
-
-## 🏗 Архитектура
-
-Проект использует Clean Architecture:
-
-```
-src/automation/
-├── main.py              # FastAPI приложение
-├── api/                 # FastAPI роутеры и зависимости
-├── domain/              # Бизнес-логика и модели
-├── ports/               # Интерфейсы (абстракции)
-├── adapters/            # Реализации (IMAP, файлы, парсеры)
-├── app/                 # Use Cases (бизнес-сценарии)
-└── config/              # Настройки
-```
-
-## 🔐 Безопасность
-
-- ✅ Проверка типов файлов по расширению и MIME
-- ✅ Ограничение размера файлов
-- ✅ Карантин для подозрительных файлов
-- ✅ Изолированное хранение безопасных файлов
-
-## 📝 Пример использования API
-
-```bash
-# Запустить обработку почты
-curl -X POST "http://localhost:8000/api/v1/emails/process" \
-     -H "Content-Type: application/json" \
-     -d '{"force_reprocess": false, "dry_run": false}'
-
-# Получить статистику
-curl "http://localhost:8000/api/v1/system/stats"
-
-# Проверить подключение к IMAP
-curl -X POST "http://localhost:8000/api/v1/system/test-connection"
-```
-
-## 🚧 В разработке
-
-- [ ] Реализация адаптеров для файлового хранилища
-- [ ] Парсеры документов (PDF, Excel, XML)
-- [ ] Use Cases для обработки
-- [ ] Интеграция с внешними API
-- [ ] Планировщик задач
-- [ ] Мониторинг и логирование
-
-## 🧪 Тестирование
-
-```bash
-# Запуск тестов
-pytest
-
-# С покрытием кода
-pytest --cov=automation
-```
-
-## 📚 Разработка
-
-```bash
-# Проверка типов
-mypy src/
-
-# Форматирование кода
-ruff check src/
-ruff format src/
-```
+The project is under active development. The architectural foundation and core processing flow are already in place; the next focus is parsing quality and UX polish so it becomes a useful day-to-day tool.

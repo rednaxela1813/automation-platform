@@ -1,48 +1,49 @@
 """
-Порты для работы с файловым хранилищем
-Определяют интерфейсы для безопасного хранения и карантина файлов
+Ports for file storage operations.
+Defines interfaces for secure storage and file quarantine.
 """
+
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Protocol
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Protocol
 
 from automation.ports.email import EmailAttachment
 
 
 class FileStorageResult(Enum):
-    """Результат сохранения файла"""
+    """File storage result."""
+
     SAFE_STORAGE = "safe_storage"
-    QUARANTINE = "quarantine" 
+    QUARANTINE = "quarantine"
     REJECTED = "rejected"
 
 
 class FileStorageService(Protocol):
-    """Интерфейс для файлового хранилища"""
-    
+    """File storage interface."""
+
     def store_attachment(self, attachment: EmailAttachment) -> tuple[FileStorageResult, str]:
         """
-        Сохранить вложение в соответствующее хранилище
-        
+        Save an attachment to the corresponding storage.
+
         Returns:
-            tuple: (результат, путь к файлу или причина отклонения)
+            tuple: (result, file path or rejection reason)
         """
         ...
-    
+
     def is_file_safe(self, attachment: EmailAttachment) -> bool:
-        """Проверить безопасность файла"""
+        """Check whether a file is safe."""
         ...
-    
+
     def get_safe_files(self) -> list[Path]:
-        """Получить список файлов в безопасном хранилище"""
+        """Get a list of files in safe storage."""
         ...
-    
+
     def get_quarantine_files(self) -> list[Path]:
-        """Получить список файлов в карантине"""
+        """Get a list of files in quarantine."""
         ...
-    
+
     def delete_quarantine_file(self, filename: str) -> bool:
-        """Удалить файл из карантина"""
+        """Delete a file from quarantine."""
         ...

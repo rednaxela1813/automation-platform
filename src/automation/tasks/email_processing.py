@@ -1,33 +1,34 @@
 """
-Фоновые задачи для обработки email
+Background tasks for email processing
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict
 
-from automation.celery_app import celery_app
-from automation.app.use_cases import EmailProcessingUseCase
 from automation.adapters.email_imap import ImapEmailClient
-from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
-from automation.adapters.pdf_parser import PdfInvoiceParser
 from automation.adapters.excel_parser import ExcelInvoiceParser
 from automation.adapters.file_storage import LocalFileStorage
+from automation.adapters.pdf_parser import PdfInvoiceParser
+from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
+from automation.app.use_cases import EmailProcessingUseCase
+from automation.celery_app import celery_app
 from automation.config.settings import settings
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, retry_kwargs={'max_retries': 3, 'countdown': 60})
+@celery_app.task(bind=True, retry_kwargs={"max_retries": 3, "countdown": 60})
 def process_new_emails_task(self) -> Dict[str, Any]:
     """
-    Периодическая задача для обработки новых email сообщений
+    Periodic task for processing new email messages
     """
     try:
         logger.info("Starting email processing task")
-        
-        # Инициализируем зависимости
+
+        # Initialize dependencies
         email_processor = ImapEmailClient()
         db_path = settings.database_url
         if db_path.startswith("sqlite:///"):
@@ -38,103 +39,89 @@ def process_new_emails_task(self) -> Dict[str, Any]:
             ExcelInvoiceParser(),
         ]
         file_storage = LocalFileStorage()
-        
-        # Создаем use case
+
+        # Create use case
         use_case = EmailProcessingUseCase(
             email_processor=email_processor,
             repository=repository,
             document_parser=document_parser,
-            file_storage=file_storage
+            file_storage=file_storage,
         )
-        
-        # Обрабатываем новые email
+
+        # Process new email
         result = use_case.process_new_emails()
-        
+
         logger.info(
             f"Email processing completed: {result.messages_processed} messages, "
             f"{result.invoices_found} invoices found, "
             f"{result.invoices_uploaded} uploaded"
         )
-        
+
         return {
             "status": "success",
             "messages_processed": result.messages_processed,
             "invoices_found": result.invoices_found,
             "invoices_uploaded": result.invoices_uploaded,
             "files_quarantined": result.files_quarantined,
-            "errors": result.errors[:10]  # Ограничиваем количество ошибок в ответе
+            "errors": result.errors[:10],  # Limit number of errors in response
         }
-        
+
     except Exception as exc:
         logger.error(f"Email processing task failed: {exc}", exc_info=True)
-        
-        # Retry задачи при ошибке
+
+        # Retry task on error
         try:
             raise self.retry(exc=exc)
         except self.MaxRetriesExceededError:
             logger.error("Max retries exceeded for email processing task")
-            return {
-                "status": "failed",
-                "error": str(exc),
-                "messages_processed": 0
-            }
+            return {"status": "failed", "error": str(exc), "messages_processed": 0}
 
 
 @celery_app.task(bind=True)
 def process_single_email_task(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Задача для обработки одного email сообщения
-    Используется для обработки email в реальном времени через webhook
+    Task for processing one email message
+    Used for real-time email processing via webhook
     """
     try:
         logger.info(f"Processing single email: {message_data.get('message_id')}")
-        
-        # Здесь будет логика обработки одного сообщения
-        # Когда приходит webhook от почтового провайдера
-        
+
+        # Single-message processing logic goes here
+        # When a webhook arrives from a mail provider
+
         return {
             "status": "success",
             "message_id": message_data.get("message_id"),
-            "processed_at": "2024-02-20T10:00:00Z"
+            "processed_at": "2024-02-20T10:00:00Z",
         }
-        
+
     except Exception as exc:
         logger.error(f"Single email processing failed: {exc}", exc_info=True)
-        return {
-            "status": "failed",
-            "error": str(exc)
-        }
+        return {"status": "failed", "error": str(exc)}
 
 
 @celery_app.task
 def send_processing_report_task(period: str = "daily") -> Dict[str, Any]:
     """
-    Задача для отправки отчетов о обработке
+    Generate and send processing summary report.
     """
     try:
         logger.info(f"Generating {period} processing report")
-        
-        # Здесь будет логика генерации отчета
-        # Статистика обработанных email, ошибок, etc.
-        
+
+        # Placeholder: collect real metrics and attach delivery channel details.
+
         report_data = {
             "period": period,
             "emails_processed": 42,
             "invoices_extracted": 38,
-            "errors": ["Connection timeout", "Invalid file format"]
+            "errors": ["Connection timeout", "Invalid file format"],
         }
-        
-        # Отправка отчета (email, Slack, etc.)
+
+        # Placeholder: send report via selected channel (email, Slack, etc.)
         logger.info(f"Processing report sent: {report_data}")
-        
-        return {
-            "status": "success",
-            "report": report_data
-        }
-        
+
+        return {"status": "success", "report": report_data}
+
     except Exception as exc:
         logger.error(f"Report generation failed: {exc}", exc_info=True)
-        return {
-            "status": "failed", 
-            "error": str(exc)
-        }
+        return {"status": "failed", "error": str(exc)}

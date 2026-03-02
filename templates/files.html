@@ -4,7 +4,7 @@
     <div class="card">
       <div class="card-body text-center">
         <h3 class="text-primary">{{ files|length }}</h3>
-        <p class="text-muted mb-0">Всего файлов</p>
+        <p class="text-muted mb-0">Total files</p>
       </div>
     </div>
   </div>
@@ -14,7 +14,7 @@
         <h3 class="text-success">
           {{ pdf_count or 0 }}
         </h3>
-        <p class="text-muted mb-0">PDF файлов</p>
+        <p class="text-muted mb-0">PDF files</p>
       </div>
     </div>
   </div>
@@ -28,7 +28,7 @@
       >
         <h5 class="mb-0">
           <i class="fas fa-folder-open me-2"></i>
-          Все обработанные файлы
+          All processed files
         </h5>
         <div class="btn-group" role="group">
           <button
@@ -36,14 +36,14 @@
             class="btn btn-outline-secondary btn-sm"
             onclick="refreshFiles()"
           >
-            <i class="fas fa-sync-alt"></i> Обновить
+            <i class="fas fa-sync-alt"></i> Refresh
           </button>
           <button
             type="button"
             class="btn btn-outline-danger btn-sm"
             onclick="cleanupFiles()"
           >
-            <i class="fas fa-trash"></i> Очистить старые
+            <i class="fas fa-trash"></i> Clean old files
           </button>
         </div>
       </div>
@@ -54,13 +54,13 @@
           <table class="table table-hover mb-0">
             <thead class="table-light">
               <tr>
-                <th style="width: 40%">Имя файла</th>
-                <th style="width: 10%">Размер</th>
-                <th style="width: 15%">Дата создания</th>
-                <th style="width: 10%">Тип</th>
-                <th style="width: 15%">Статус</th>
-                <th style="width: 10%">Действия</th>
-                <th style="width: 8%">Данные</th>
+                <th style="width: 40%">File name</th>
+                <th style="width: 10%">Size</th>
+                <th style="width: 15%">Created at</th>
+                <th style="width: 10%">Type</th>
+                <th style="width: 15%">Status</th>
+                <th style="width: 10%">Actions</th>
+                <th style="width: 8%">Data</th>
               </tr>
             </thead>
             <tbody>
@@ -100,14 +100,14 @@
                   file.filename.endswith('.doc') %}
                   <span class="badge bg-primary">Word</span>
                   {% else %}
-                  <span class="badge bg-secondary">Другой</span>
+                  <span class="badge bg-secondary">Other</span>
                   {% endif %}
                 </td>
 
                 <td>
                   <span class="badge bg-success">
                     <i class="fas fa-check me-1"></i>
-                    Обработан
+                    Processed
                   </span>
                 </td>
 
@@ -116,21 +116,21 @@
                     <button
                       class="btn btn-outline-primary"
                       onclick="viewFile('{{ file.filepath }}')"
-                      title="Просмотреть"
+                      title="View"
                     >
                       <i class="fas fa-eye"></i>
                     </button>
                     <button
                       class="btn btn-outline-success"
                       onclick="downloadFile('{{ file.filepath }}')"
-                      title="Скачать"
+                      title="Download"
                     >
                       <i class="fas fa-download"></i>
                     </button>
                     <button
                       class="btn btn-outline-info"
                       onclick="analyzeFile('{{ file.filepath }}')"
-                      title="Анализ"
+                      title="Analyze"
                     >
                       <i class="fas fa-search"></i>
                     </button>
@@ -140,7 +140,7 @@
                   <button
                     class="btn btn-outline-secondary btn-sm"
                     onclick="openParsedData('{{ file.filepath }}')"
-                    title="Данные"
+                    title="Data"
                   >
                     <i class="fas fa-code"></i>
                   </button>
@@ -154,11 +154,11 @@
       {% else %}
       <div class="card-body text-center py-5">
         <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
-        <h5 class="text-muted">Файлы не найдены</h5>
-        <p class="text-muted">Обработанные файлы будут отображены здесь</p>
+        <h5 class="text-muted">No files found</h5>
+        <p class="text-muted">Processed files will be displayed here</p>
         <a href="/" class="btn btn-primary">
           <i class="fas fa-arrow-left me-2"></i>
-          Вернуться к дашборду
+          Back to dashboard
         </a>
       </div>
       {% endif %}
@@ -166,7 +166,7 @@
   </div>
 </div>
 
-<!-- Модальное окно для просмотра файла -->
+<!-- File view modal -->
 <div
   class="modal fade"
   id="fileViewModal"
@@ -179,7 +179,7 @@
       <div class="modal-header">
         <h5 class="modal-title" id="fileViewModalLabel">
           <i class="fas fa-file-alt me-2"></i>
-          Информация о файле
+          File information
         </h5>
         <button
           type="button"
@@ -192,14 +192,14 @@
         <div id="fileDetails">
           <div class="text-center">
             <div class="spinner-border" role="status">
-              <span class="visually-hidden">Загрузка...</span>
+              <span class="visually-hidden">Loading...</span>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Закрыть
+          Close
         </button>
         <button
           type="button"
@@ -207,7 +207,7 @@
           onclick="downloadCurrentFile()"
         >
           <i class="fas fa-download me-2"></i>
-          Скачать файл
+          Download file
         </button>
       </div>
     </div>
@@ -226,7 +226,7 @@
     const modal = new bootstrap.Modal(document.getElementById("fileViewModal"));
     modal.show();
 
-    // Загружаем информацию о файле
+    // Loading file information
     fetch("/api/v1/files/info?path=" + encodeURIComponent(filepath))
       .then((response) => response.json())
       .then((data) => {
@@ -236,20 +236,20 @@
           detailsDiv.innerHTML = `
                         <div class="row">
                             <div class="col-md-6">
-                                <h6 class="text-primary">Основная информация</h6>
+                                <h6 class="text-primary">General information</h6>
                                 <table class="table table-sm">
-                                    <tr><td><strong>Имя файла:</strong></td><td>${data.filename}</td></tr>
-                                    <tr><td><strong>Размер:</strong></td><td>${data.size_formatted}</td></tr>
-                                    <tr><td><strong>Дата создания:</strong></td><td>${data.created_at}</td></tr>
-                                    <tr><td><strong>Тип MIME:</strong></td><td>${data.mime_type || "неизвестно"}</td></tr>
+                                    <tr><td><strong>File name:</strong></td><td>${data.filename}</td></tr>
+                                    <tr><td><strong>Size:</strong></td><td>${data.size_formatted}</td></tr>
+                                    <tr><td><strong>Created at:</strong></td><td>${data.created_at}</td></tr>
+                                    <tr><td><strong>MIME type:</strong></td><td>${data.mime_type || "unknown"}</td></tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="text-primary">Обработка</h6>
+                                <h6 class="text-primary">Processing</h6>
                                 <table class="table table-sm">
-                                    <tr><td><strong>Статус:</strong></td><td><span class="badge bg-success">Обработан</span></td></tr>
-                                    <tr><td><strong>Парсер:</strong></td><td>Shopify PDF Parser</td></tr>
-                                    <tr><td><strong>Извлечено:</strong></td><td>${data.extracted_data || "Данные не найдены"}</td></tr>
+                                    <tr><td><strong>Status:</strong></td><td><span class="badge bg-success">Processed</span></td></tr>
+                                    <tr><td><strong>Parser:</strong></td><td>Shopify PDF Parser</td></tr>
+                                    <tr><td><strong>Extracted:</strong></td><td>${data.extracted_data || "No data found"}</td></tr>
                                 </table>
                             </div>
                         </div>
@@ -258,7 +258,7 @@
           detailsDiv.innerHTML = `
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            Не удалось загрузить информацию о файле: ${data.error}
+                            Failed to load file information: ${data.error}
                         </div>
                     `;
         }
@@ -267,14 +267,14 @@
         document.getElementById("fileDetails").innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-times-circle me-2"></i>
-                        Ошибка загрузки: ${err.message}
+                        Load error: ${err.message}
                     </div>
                 `;
       });
   }
 
   function downloadFile(filepath) {
-    // Создаем скрытую ссылку для скачивания
+    // Create hidden download link
     const link = document.createElement("a");
     link.href = "/api/v1/files/download?path=" + encodeURIComponent(filepath);
     link.download = "";
@@ -290,7 +290,7 @@
   }
 
   function analyzeFile(filepath) {
-    // Открываем анализ файла в новом окне
+    // Open file analysis in new window
     window.open(
       "/api/v1/files/analyze?path=" + encodeURIComponent(filepath),
       "_blank",
@@ -307,18 +307,18 @@
 
   function cleanupFiles() {
     if (
-      confirm("Удалить файлы старше 30 дней? Это действие нельзя отменить.")
+      confirm("Delete files older than 30 days? This action cannot be undone.")
     ) {
       fetch("/api/v1/files/cleanup", {
         method: "POST",
       })
         .then((response) => response.json())
         .then((data) => {
-          alert("Очистка завершена: " + data.message);
+          alert("Cleanup completed: " + data.message);
           location.reload();
         })
         .catch((err) => {
-          alert("Ошибка очистки: " + err.message);
+          alert("Cleanup error: " + err.message);
         });
     }
   }

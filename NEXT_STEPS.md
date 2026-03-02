@@ -1,90 +1,47 @@
-# ✅ Критическая проблема безопасности исправлена!
+# Next Steps
 
-## 🔐 Что было сделано:
+## Completed
+- Removed real credentials from `.env`.
+- Protected `.env` with `.gitignore`.
+- Added setup and security documentation.
+- Initialized project structure and core components.
 
-1. **✅ Удалены реальные credentials** из .env файла
-   - Заменены на безопасные примеры
-   - Файл .env защищен .gitignore от случайного коммита
+## What to do next
 
-2. **✅ Создан Git репозиторий** с полной реализацией
-   - 40 файлов добавлено в проект
-   - Первый коммит содержит все компоненты
-   - .env файл НЕ попал в Git историю ✅
-
-3. **✅ Добавлена документация** по настройке
-   - [SETUP.md](SETUP.md) - инструкции по настройке credentials
-   - [SECURITY_WARNING.md](SECURITY_WARNING.md) - предупреждения по безопасности
-
-## 🚀 Следующие шаги:
-
-### 1. Настройка локального окружения
-
+### 1. Local environment
 ```bash
-# Настройте ваши реальные credentials
-cp .env.example .env
-nano .env  # Отредактируйте с вашими данными
-
-# Установите зависимости
-make dev-install
-
-# Создайте необходимые директории
-make setup-dev
+nano .env
+pip install -e ".[dev]"
+mkdir -p storage/safe storage/quarantine logs
 ```
 
-### 2. Тестирование
-
+### 2. Run and test
 ```bash
-# Запустите сервер
-make run
-
-# В другом терминале - тесты
-make test
-
-# Проверьте подключение к email
-curl -X POST "http://localhost:8000/api/v1/system/test-connection"
+python run.py
+pytest
+python test_imap.py
 ```
 
-### 3. Фоновые задачи
-
+### 3. Background workers
 ```bash
-# Запустите Celery worker
-make celery-worker
-
-# Запустите планировщик
-make celery-beat
+celery -A automation.celery_app worker --loglevel=info
+celery -A automation.celery_app beat --loglevel=info
 ```
 
-### 4. Docker deployment
-
+### 4. Docker stack
 ```bash
-# Соберите и запустите все сервисы
-make docker-up
+docker-compose up --build
 ```
 
-## 📊 Статус проекта:
+## Project status
+- Clean Architecture in place
+- FastAPI API and web UI available
+- PDF/Excel parsing adapters present
+- Celery tasks configured
+- Dockerized services available
 
-- ✅ **Архитектура**: Clean Architecture реализована
-- ✅ **API**: FastAPI с документацией
-- ✅ **Парсеры**: PDF и Excel обработка
-- ✅ **Фоновые задачи**: Celery настроен
-- ✅ **Безопасность**: Credentials защищены
-- ✅ **Docker**: Контейнеризация готова
-- ✅ **CI/CD**: GitHub Actions pipeline
-- ✅ **Тесты**: Тестовый фреймворк настроен
-
-## 🎯 Готов к развитию:
-
-Проект готов для:
-
-- ✅ Production deployment
-- ✅ Интеграции с реальными email серверами
-- ✅ Добавления новых парсеров документов
-- ✅ Расширения API функциональности
-
-**Безопасность обеспечена! 🔒 Можно продолжать разработку.**
-
----
-
-Для вопросов по настройке см. [SETUP.md](SETUP.md)  
-Для участия в разработке см. [CONTRIBUTING.md](CONTRIBUTING.md)  
-План развития в [ROADMAP.md](ROADMAP.md)
+## References
+- [SETUP.md](SETUP.md)
+- [SECURITY_WARNING.md](SECURITY_WARNING.md)
+- [ROADMAP.md](ROADMAP.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)

@@ -7,7 +7,7 @@
       >
         <h5 class="mb-0">
           <i class="fas fa-list-alt me-2"></i>
-          Системные логи
+          System logs
         </h5>
         <div class="btn-group" role="group">
           <button
@@ -15,7 +15,7 @@
             class="btn btn-outline-secondary btn-sm"
             onclick="refreshLogs()"
           >
-            <i class="fas fa-sync-alt"></i> Обновить
+            <i class="fas fa-sync-alt"></i> Refresh
           </button>
           <button
             type="button"
@@ -23,14 +23,14 @@
             onclick="toggleAutoRefresh()"
           >
             <i class="fas fa-play" id="autoRefreshIcon"></i>
-            <span id="autoRefreshText">Авто-обновление</span>
+            <span id="autoRefreshText">Auto-refresh</span>
           </button>
           <button
             type="button"
             class="btn btn-outline-warning btn-sm"
             onclick="clearLogs()"
           >
-            <i class="fas fa-eraser"></i> Очистить
+            <i class="fas fa-eraser"></i> Clear
           </button>
         </div>
       </div>
@@ -39,54 +39,54 @@
 </div>
 
 <div class="row mb-4">
-  <!-- Фильтры -->
+  <!-- Filters -->
   <div class="col-md-3">
     <div class="card">
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-filter me-2"></i>
-          Фильтры
+          Filters
         </h6>
       </div>
       <div class="card-body">
         <div class="mb-3">
           <label for="levelFilter" class="form-label"
-            >Уровень логирования</label
+            >Log level</label
           >
           <select
             class="form-select form-select-sm"
             id="levelFilter"
             onchange="filterLogs()"
           >
-            <option value="all">Все уровни</option>
-            <option value="ERROR">Только ошибки</option>
-            <option value="WARNING">Предупреждения</option>
-            <option value="INFO">Информация</option>
-            <option value="SUCCESS">Успешные операции</option>
+            <option value="all">All levels</option>
+            <option value="ERROR">Errors only</option>
+            <option value="WARNING">Warnings</option>
+            <option value="INFO">Info</option>
+            <option value="SUCCESS">Successful operations</option>
           </select>
         </div>
 
         <div class="mb-3">
-          <label for="timeFilter" class="form-label">Период</label>
+          <label for="timeFilter" class="form-label">Period</label>
           <select
             class="form-select form-select-sm"
             id="timeFilter"
             onchange="filterLogs()"
           >
-            <option value="all">Все время</option>
-            <option value="today">Сегодня</option>
-            <option value="hour">Последний час</option>
-            <option value="30min">Последние 30 мин</option>
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="hour">Last hour</option>
+            <option value="30min">Last 30 min</option>
           </select>
         </div>
 
         <div class="mb-3">
-          <label for="searchFilter" class="form-label">Поиск</label>
+          <label for="searchFilter" class="form-label">Search</label>
           <input
             type="text"
             class="form-control form-control-sm"
             id="searchFilter"
-            placeholder="Ищите в логах..."
+            placeholder="Search in logs..."
             oninput="filterLogs()"
           />
         </div>
@@ -97,19 +97,19 @@
           onclick="resetFilters()"
         >
           <i class="fas fa-times me-2"></i>
-          Сбросить фильтры
+          Reset filters
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Логи -->
+  <!-- Log stream -->
   <div class="col-md-9">
     <div class="card">
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-terminal me-2"></i>
-          Лог-файл системы
+          System log file
           <span class="badge bg-secondary" id="logCount"
             >{{ logs|length }}</span
           >
@@ -167,8 +167,8 @@
             {% else %}
             <div class="text-center text-muted py-4">
               <i class="fas fa-inbox fa-3x mb-3"></i>
-              <h6>Логи не найдены</h6>
-              <p class="small">Системные события будут отображаться здесь</p>
+              <h6>No logs found</h6>
+              <p class="small">System events will appear here</p>
             </div>
             {% endif %}
           </div>
@@ -178,14 +178,14 @@
   </div>
 </div>
 
-<!-- Статистика по логам -->
+<!-- Log statistics -->
 <div class="row">
   <div class="col-md-12">
     <div class="card">
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-chart-bar me-2"></i>
-          Статистика логов
+          Log statistics
         </h6>
       </div>
       <div class="card-body">
@@ -195,7 +195,7 @@
               <h4 class="text-danger" id="errorCount">
                 {{ log_stats.ERROR or 0 }}
               </h4>
-              <p class="text-muted mb-0">Ошибки</p>
+              <p class="text-muted mb-0">Errors</p>
             </div>
           </div>
           <div class="col-md-3">
@@ -203,7 +203,7 @@
               <h4 class="text-warning" id="warningCount">
                 {{ log_stats.WARNING or 0 }}
               </h4>
-              <p class="text-muted mb-0">Предупреждения</p>
+              <p class="text-muted mb-0">Warnings</p>
             </div>
           </div>
           <div class="col-md-3">
@@ -211,14 +211,14 @@
               <h4 class="text-success" id="successCount">
                 {{ log_stats.SUCCESS or 0 }}
               </h4>
-              <p class="text-muted mb-0">Успешные</p>
+              <p class="text-muted mb-0">Successful</p>
             </div>
           </div>
           <div class="col-md-3">
             <h4 class="text-primary" id="infoCount">
               {{ log_stats.INFO or 0 }}
             </h4>
-            <p class="text-muted mb-0">Информация</p>
+            <p class="text-muted mb-0">Info</p>
           </div>
         </div>
       </div>
@@ -239,17 +239,17 @@
     const text = document.getElementById("autoRefreshText");
 
     if (isAutoRefreshActive) {
-      // Останавливаем авто-обновление
+      // Stopping auto-refresh
       clearInterval(autoRefreshInterval);
       isAutoRefreshActive = false;
       icon.className = "fas fa-play";
-      text.textContent = "Авто-обновление";
+      text.textContent = "Auto-refresh";
     } else {
-      // Запускаем авто-обновление каждые 10 секунд
+      // Start auto-refresh every 10 seconds
       autoRefreshInterval = setInterval(refreshLogs, 10000);
       isAutoRefreshActive = true;
       icon.className = "fas fa-pause";
-      text.textContent = "Остановить";
+      text.textContent = "Stop";
     }
   }
 
@@ -266,7 +266,7 @@
     logEntries.forEach((entry) => {
       let show = true;
 
-      // Фильтр по уровню
+      // Filter by level
       if (levelFilter !== "all") {
         const entryLevel = entry.getAttribute("data-level");
         if (entryLevel !== levelFilter) {
@@ -274,7 +274,7 @@
         }
       }
 
-      // Фильтр по времени
+      // Filter by time
       if (show && timeFilter !== "all") {
         const entryTimestamp = entry.getAttribute("data-timestamp");
         const entryTime = new Date(entryTimestamp);
@@ -302,7 +302,7 @@
         }
       }
 
-      // Фильтр поиска
+      // Search filter
       if (show && searchFilter) {
         const message = entry
           .querySelector(".log-message")
@@ -327,22 +327,22 @@
   }
 
   function clearLogs() {
-    if (confirm("Очистить все логи? Это действие нельзя отменить.")) {
+    if (confirm("Clear all logs? This action cannot be undone.")) {
       fetch("/api/v1/logs/clear", {
         method: "POST",
       })
         .then((response) => response.json())
         .then((data) => {
-          alert("Логи очищены: " + data.message);
+          alert("Logs cleared: " + data.message);
           location.reload();
         })
         .catch((err) => {
-          alert("Ошибка очистки логов: " + err.message);
+          alert("Log clear error: " + err.message);
         });
     }
   }
 
-  // Автоматическая прокрутка к последнему логу
+  // Auto-scroll to latest log
   document.addEventListener("DOMContentLoaded", function () {
     const logContainer = document.getElementById("logContainer");
     logContainer.scrollTop = logContainer.scrollHeight;

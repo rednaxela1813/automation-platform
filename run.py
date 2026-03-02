@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Скрипт для запуска Email Automation Platform FastAPI сервера
+Script to run the Email Automation Platform FastAPI server
 """
 import sys
 from pathlib import Path
 
-# Добавляем src директорию в PYTHONPATH
+# Add src directory to PYTHONPATH
 project_root = Path(__file__).parent
 src_path = project_root / "src"
 sys.path.insert(0, str(src_path))
@@ -16,10 +16,10 @@ from automation.config.settings import settings
 
 
 def main():
-    """Запуск FastAPI сервера с настройками из конфигурации"""
-    print(f"🚀 Запуск Email Automation Platform на {settings.host}:{settings.port}")
-    print(f"📚 API документация: http://{settings.host}:{settings.port}/docs")
-    print(f"🔄 Debug режим: {settings.debug}")
+    """Run FastAPI server using configured settings"""
+    print(f"🚀 Starting Email Automation Platform on {settings.host}:{settings.port}")
+    print(f"📚 API docs: http://{settings.host}:{settings.port}/docs")
+    print(f"🔄 Debug mode: {settings.debug}")
     
     uvicorn.run(
         "automation.main:app",

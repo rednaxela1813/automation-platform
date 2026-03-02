@@ -1,27 +1,29 @@
 """
-Порты для работы с электронной почтой
-Определяют интерфейсы для обработки email сообщений и вложений
+Ports for email processing.
+Defines interfaces for working with email messages and attachments.
 """
+
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import List, Optional, Protocol
 from dataclasses import dataclass
 from email.message import Message
+from typing import List, Protocol
 
 
 @dataclass(frozen=True)
 class EmailAttachment:
-    """Модель вложения электронного письма"""
+    """Email attachment model."""
+
     filename: str
     content_type: str
     content: bytes
     size: int
 
 
-@dataclass(frozen=True) 
+@dataclass(frozen=True)
 class EmailMessage:
-    """Модель электронного сообщения"""
+    """Email message model."""
+
     message_id: str
     subject: str
     sender: str
@@ -31,16 +33,16 @@ class EmailMessage:
 
 
 class EmailProcessor(Protocol):
-    """Интерфейс для обработки электронной почты"""
-    
+    """Email processing interface."""
+
     def fetch_new_messages(self) -> List[EmailMessage]:
-        """Получить новые сообщения из почтового ящика"""
+        """Fetch new messages from a mailbox."""
         ...
-    
+
     def extract_attachments(self, message: Message) -> List[EmailAttachment]:
-        """Извлечь вложения из сообщения"""
+        """Extract attachments from a message."""
         ...
-    
+
     def mark_as_processed(self, message_id: str) -> bool:
-        """Отметить сообщение как обработанное"""
+        """Mark a message as processed."""
         ...

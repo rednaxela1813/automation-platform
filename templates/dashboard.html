@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block content %}
-<!-- Метрики системы -->
+<!-- System metrics -->
 <div class="row mb-4">
   <div class="col-xl-3 col-md-6 mb-4">
     <div class="card metric-card success">
@@ -7,7 +7,7 @@
         <div class="row no-gutters align-items-center">
           <div class="col mr-2">
             <div class="text-xs font-weight-bold text-uppercase mb-1">
-              Обработано писем
+              Processed emails
             </div>
             <div
               class="h5 mb-0 font-weight-bold"
@@ -30,7 +30,7 @@
         <div class="row no-gutters align-items-center">
           <div class="col mr-2">
             <div class="text-xs font-weight-bold text-uppercase mb-1">
-              Файлов сохранено
+              Files stored
             </div>
             <div
               class="h5 mb-0 font-weight-bold"
@@ -53,7 +53,7 @@
         <div class="row no-gutters align-items-center">
           <div class="col mr-2">
             <div class="text-xs font-weight-bold text-uppercase mb-1">
-              В карантине
+              In quarantine
             </div>
             <div
               class="h5 mb-0 font-weight-bold"
@@ -76,10 +76,10 @@
         <div class="row no-gutters align-items-center">
           <div class="col mr-2">
             <div class="text-xs font-weight-bold text-uppercase mb-1">
-              Статус системы
+              System status
             </div>
             <div class="h5 mb-0 font-weight-bold" data-metric="system_status">
-              {{ stats.system_status or "Неизвестно" }}
+              {{ stats.system_status or "Unknown" }}
             </div>
           </div>
           <div class="col-auto">
@@ -91,22 +91,22 @@
   </div>
 </div>
 
-<!-- Управление обработкой -->
+<!-- Processing controls -->
 <div class="row mb-4">
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
         <h5 class="mb-0">
           <i class="fas fa-play-circle me-2"></i>
-          Обработка почты
+          Mail processing
         </h5>
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-md-6 mb-3">
-            <h6>Автоматическая обработка</h6>
+            <h6>Automatic processing</h6>
             <p class="text-muted mb-2">
-              Обработать новые письма с вложениями PDF
+              Process new emails with PDF attachments
             </p>
             <button
               id="processBtn"
@@ -118,12 +118,12 @@
                 <i class="fas fa-spinner fa-spin me-2"></i>
               </span>
               <i class="fas fa-play me-2"></i>
-              Запустить обработку
+              Start processing
             </button>
           </div>
 
           <div class="col-md-6 mb-3">
-            <h6>Дополнительные опции</h6>
+            <h6>Additional options</h6>
             <div class="form-check mb-2">
               <input
                 class="form-check-input"
@@ -131,7 +131,7 @@
                 id="dryRunCheck"
               />
               <label class="form-check-label" for="dryRunCheck">
-                Тестовый режим (без сохранения)
+                Dry-run mode (no saving)
               </label>
             </div>
             <div class="form-check mb-2">
@@ -141,7 +141,7 @@
                 id="forceReprocessCheck"
               />
               <label class="form-check-label" for="forceReprocessCheck">
-                Переобработать все письма
+                Reprocess all emails
               </label>
             </div>
             <button
@@ -155,7 +155,7 @@
               "
             >
               <i class="fas fa-cogs me-2"></i>
-              Запустить с опциями
+              Run with options
             </button>
           </div>
         </div>
@@ -163,11 +163,11 @@
         {% if last_processing %}
         <div class="alert alert-info mt-3">
           <i class="fas fa-info-circle me-2"></i>
-          <strong>Последняя обработка:</strong> {{ last_processing.processed_at
+          <strong>Last processing:</strong> {{ last_processing.processed_at
           }} <br />
           <small>
-            Писем: {{ last_processing.emails_processed }}, Файлов: {{
-            last_processing.files_processed }}, Карантин: {{
+            Emails: {{ last_processing.emails_processed }}, Files: {{
+            last_processing.files_processed }}, Quarantined: {{
             last_processing.files_quarantined }}
           </small>
         </div>
@@ -181,34 +181,34 @@
       <div class="card-header">
         <h6 class="mb-0">
           <i class="fas fa-server me-2"></i>
-          Конфигурация
+          Configuration
         </h6>
       </div>
       <div class="card-body">
         <dl class="row small">
-          <dt class="col-sm-6">IMAP хост:</dt>
+          <dt class="col-sm-6">IMAP host:</dt>
           <dd class="col-sm-6">{{ config.imap_host }}</dd>
 
-          <dt class="col-sm-6">Почтовый ящик:</dt>
+          <dt class="col-sm-6">Mailbox:</dt>
           <dd class="col-sm-6">{{ config.imap_mailbox }}</dd>
 
-          <dt class="col-sm-6">Макс. размер файла:</dt>
+          <dt class="col-sm-6">Max file size:</dt>
           <dd class="col-sm-6">{{ config.max_file_size_mb }}MB</dd>
 
-          <dt class="col-sm-6">Типы файлов:</dt>
+          <dt class="col-sm-6">File types:</dt>
           <dd class="col-sm-6">{{ config.allowed_extensions | join(', ') }}</dd>
         </dl>
 
         <a href="/settings" class="btn btn-outline-secondary btn-sm">
           <i class="fas fa-edit me-2"></i>
-          Изменить настройки
+          Change settings
         </a>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Последние файлы -->
+<!-- Recent files -->
 <div class="row">
   <div class="col-12">
     <div class="card">
@@ -217,9 +217,9 @@
       >
         <h6 class="mb-0">
           <i class="fas fa-folder-open me-2"></i>
-          Последние обработанные файлы
+          Recently processed files
         </h6>
-        <a href="/files" class="btn btn-outline-primary btn-sm"> Все файлы </a>
+        <a href="/files" class="btn btn-outline-primary btn-sm"> All files </a>
       </div>
 
       {% if recent_files %}
@@ -228,11 +228,11 @@
           <table class="table table-hover mb-0">
             <thead class="table-light">
               <tr>
-                <th>Имя файла</th>
-                <th>Размер</th>
-                <th>Дата обработки</th>
-                <th>Статус</th>
-                <th>Действия</th>
+                <th>File name</th>
+                <th>Size</th>
+                <th>Processed at</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -245,7 +245,7 @@
                 <td>{{ file.size_formatted }}</td>
                 <td>{{ file.created_at }}</td>
                 <td>
-                  <span class="badge bg-success status-badge"> Обработан </span>
+                  <span class="badge bg-success status-badge"> Processed </span>
                 </td>
                 <td>
                   <button
@@ -264,8 +264,8 @@
       {% else %}
       <div class="card-body text-center text-muted">
         <i class="fas fa-inbox fa-3x mb-3"></i>
-        <p>Файлы еще не обрабатывались</p>
-        <p class="small">Запустите обработку почты для начала работы</p>
+        <p>No files processed yet</p>
+        <p class="small">Start mail processing to begin</p>
       </div>
       {% endif %}
     </div>
@@ -274,7 +274,7 @@
 {% endblock %} {% block scripts %}
 <script>
   function viewFile(filepath) {
-    // Открываем файл в новом окне или показываем информацию
+    // Open file in new window or show info
     window.open("/api/v1/files/view/" + encodeURIComponent(filepath), "_blank");
   }
 </script>

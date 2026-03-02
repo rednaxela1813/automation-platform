@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Email Automation Platform - {{ title or "Управление" }}</title>
+    <title>Email Automation Platform - {{ title or "Dashboard" }}</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -96,7 +96,7 @@
                   href="/"
                 >
                   <i class="fas fa-tachometer-alt me-2"></i>
-                  Дашборд
+                  Dashboard
                 </a>
               </li>
               <li class="nav-item">
@@ -105,7 +105,7 @@
                   href="/settings"
                 >
                   <i class="fas fa-cog me-2"></i>
-                  Настройки
+                  Settings
                 </a>
               </li>
               <li class="nav-item">
@@ -114,7 +114,7 @@
                   href="/files"
                 >
                   <i class="fas fa-folder-open me-2"></i>
-                  Файлы
+                  Files
                 </a>
               </li>
               <li class="nav-item">
@@ -123,7 +123,7 @@
                   href="/logs"
                 >
                   <i class="fas fa-list-alt me-2"></i>
-                  Логи
+                  Logs
                 </a>
               </li>
               <li class="nav-item">
@@ -141,7 +141,7 @@
           <div
             class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
           >
-            <h1 class="h2">{{ title or "Дашборд" }}</h1>
+            <h1 class="h2">{{ title or "Dashboard" }}</h1>
             <div class="btn-toolbar mb-2 mb-md-0">
               <div class="btn-group me-2">
                 <button
@@ -149,7 +149,7 @@
                   class="btn btn-sm btn-outline-secondary"
                   onclick="refreshPage()"
                 >
-                  <i class="fas fa-sync-alt"></i> Обновить
+                  <i class="fas fa-sync-alt"></i> Refresh
                 </button>
               </div>
             </div>
@@ -167,7 +167,7 @@
         location.reload();
       }
 
-      // Автообновление каждые 30 секунд
+      // Refresh summary metrics every 30 seconds
       setInterval(function () {
         if (document.hidden === false) {
           updateMetrics();
@@ -175,11 +175,11 @@
       }, 30000);
 
       function updateMetrics() {
-        // Обновляем метрики без перезагрузки страницы
+        // Fetch current system metrics from API
         fetch("/api/v1/system/stats")
           .then((response) => response.json())
           .then((data) => {
-            // Обновляем значения на странице
+            // Update matching metric elements on the page
             const elements = document.querySelectorAll("[data-metric]");
             elements.forEach((el) => {
               const metric = el.getAttribute("data-metric");
@@ -188,10 +188,10 @@
               }
             });
           })
-          .catch((err) => console.error("Ошибка обновления метрик:", err));
+          .catch((err) => console.error("Failed to refresh metrics:", err));
       }
 
-      // AJAX функции для API
+      // Trigger email processing via API
       function processEmails(force = false, dryRun = false) {
         const button = document.getElementById("processBtn");
         const spinner = button.querySelector(".processing-animation");
@@ -211,13 +211,13 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            alert("Обработка запущена: " + data.message);
+            alert("Processing result: " + data.message);
             setTimeout(() => {
               location.reload();
             }, 2000);
           })
           .catch((err) => {
-            alert("Ошибка: " + err.message);
+            alert("Error: " + err.message);
           })
           .finally(() => {
             button.disabled = false;

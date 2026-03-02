@@ -1,37 +1,17 @@
-# 🔐 КРИТИЧЕСКОЕ ЗАМЕЧАНИЕ ПО БЕЗОПАСНОСТИ
+# Critical Security Warning
 
-⚠️ **ВНИМАНИЕ: В файле .env содержатся реальные credentials!**
+Real credentials were previously detected in `.env`.
 
-## 🚨 Немедленные действия:
+## Immediate Actions
 
-1. **Удалите реальные данные из .env:**
+1. Remove all real secrets from `.env`.
+2. Ensure `.env` is ignored by git.
+3. Use `.env.example` as the template for new setups.
 
-   ```bash
-   # Замените реальные данные на примеры
-   IMAP_HOST=your.mail.server.com
-   IMAP_USER=your-email@domain.com
-   IMAP_PASSWORD=your-secure-password
-   ```
+## Security Recommendations
+- Never commit credentials.
+- Store secrets in environment variables or a secret manager.
+- Rotate passwords regularly.
+- Use app-specific passwords for email accounts.
 
-2. **Добавьте .env в .gitignore:**
-
-   ```bash
-   echo ".env" >> .gitignore
-   git add .gitignore
-   git commit -m "feat: add .env to gitignore"
-   ```
-
-3. **Используйте .env.example для новых установок:**
-   ```bash
-   cp .env.example .env
-   # Отредактируйте .env с вашими настройками
-   ```
-
-## 🔒 Рекомендации по безопасности:
-
-- Никогда не коммитьте файлы с credentials
-- Используйте переменные окружения или секреты
-- Регулярно меняйте пароли
-- Используйте app-specific пароли для email
-
-**Эта проблема должна быть исправлена до любого деплоя!**
+This must be fixed before any deployment.

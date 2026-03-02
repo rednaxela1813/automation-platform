@@ -1,24 +1,24 @@
-"""
-Use Cases для бизнес-логики обработки email и счетов
-"""
+"""Application use cases for email and invoice processing."""
+
 from __future__ import annotations
 
-from pathlib import Path
-from typing import List, Optional, Iterable, Any
+import json
 from dataclasses import dataclass
 from datetime import datetime
-import json
+from pathlib import Path
+from typing import Any, Iterable, List
 
-from automation.domain.models import Invoice, InvoiceStatus
-from automation.ports.email import EmailProcessor, EmailMessage  
-from automation.ports.repository import ProcessedInvoiceRepository
+from automation.domain.models import Invoice
 from automation.ports.document_parser import DocumentParser, ParseResult
-from automation.ports.file_storage import FileStorageService, FileStorageResult
+from automation.ports.email import EmailMessage, EmailProcessor
+from automation.ports.file_storage import FileStorageResult, FileStorageService
+from automation.ports.repository import ProcessedInvoiceRepository
 
 
 @dataclass
 class ProcessingResult:
-    """Результат обработки email"""
+    """Result summary for one email processing run."""
+
     messages_processed: int
     invoices_found: int
     invoices_uploaded: int
@@ -27,8 +27,8 @@ class ProcessingResult:
 
 
 class EmailProcessingUseCase:
-    """Use case для обработки входящих email сообщений"""
-    
+    """Process new emails, parse invoices, and persist processing status."""
+
     def __init__(
         self,
         email_processor: EmailProcessor,
@@ -43,76 +43,77 @@ class EmailProcessingUseCase:
         else:
             self._document_parsers = [document_parser]
         self._file_storage = file_storage
-    
+
     def process_new_emails(self, dry_run: bool = False) -> ProcessingResult:
-        """Обработать новые email сообщения"""
+        """Fetch and process all currently available new emails."""
         messages = self._email_processor.fetch_new_messages()
-        
+
         result = ProcessingResult(
             messages_processed=len(messages),
             invoices_found=0,
             invoices_uploaded=0,
             files_quarantined=0,
-            errors=[]
+            errors=[],
         )
-        
+
         for message in messages:
             try:
                 self._process_single_message(message, result, dry_run)
-                # Помечаем письмо как обработанное после успешной обработки
+                # Mark message as processed only after handling attachments.
                 try:
                     self._email_processor.mark_as_processed(message.message_id)
                 except Exception:
-                    result.errors.append(f"Failed to mark message as processed: {message.message_id}")
-            except Exception as e:
-                result.errors.append(f"Error processing message {message.message_id}: {str(e)}")
-        
+                    result.errors.append(
+                        f"Failed to mark message as processed: {message.message_id}"
+                    )
+            except Exception as exc:
+                result.errors.append(f"Error processing message {message.message_id}: {str(exc)}")
+
         return result
-    
+
     def _process_single_message(
-        self, 
-        message: EmailMessage, 
+        self,
+        message: EmailMessage,
         result: ProcessingResult,
-        dry_run: bool
+        dry_run: bool,
     ) -> None:
-        """Обработать одно сообщение"""
+        """Handle all attachments from one message."""
         for attachment in message.attachments:
-            # Сохранить файл с автоматической проверкой безопасности
             result_type, file_path = self._file_storage.store_attachment(attachment)
-            
+
             if result_type == FileStorageResult.QUARANTINE:
                 result.files_quarantined += 1
                 continue
-            elif result_type == FileStorageResult.REJECTED:
+            if result_type == FileStorageResult.REJECTED:
                 result.errors.append(f"File rejected: {attachment.filename}")
                 continue
-                
-            # Файл сохранен в безопасном хранилище, обрабатываем его
+
             parser = self._select_parser(file_path)
             if not parser:
+                file_suffix = Path(file_path).suffix
                 result.errors.append(
-                    f"No parser available for file type: {Path(file_path).suffix} ({attachment.filename})"
+                    f"No parser available for file type: "
+                    f"{file_suffix} ({attachment.filename})"
                 )
                 continue
 
             parse_result = parser.parse_invoice(Path(file_path))
             self._write_parse_result(Path(file_path), parse_result)
-            
+
             if parse_result.success and parse_result.invoice:
                 result.invoices_found += 1
-                
-                # Проверить дубликаты
+
                 if self._repository.claim(parse_result.invoice.invoice_key):
                     if not dry_run:
-                        # Здесь должна быть отправка в внешний API
+                        # Placeholder for outbound upload/integration call.
                         pass
                     result.invoices_uploaded += 1
-                    
+
                     if not dry_run:
                         self._repository.mark_done(parse_result.invoice.invoice_key)
 
     def _write_parse_result(self, file_path: Path, parse_result: ParseResult) -> None:
-        """Сохранить результат парсинга рядом с файлом"""
+        """Persist parser output near the source file for traceability."""
         try:
             invoice = parse_result.invoice
             payload: dict[str, Any] = {
@@ -138,11 +139,11 @@ class EmailProcessingUseCase:
             with open(parsed_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2, ensure_ascii=False)
         except Exception:
-            # Не блокируем основной поток обработки
+            # Parse-result persistence must never break the main processing flow.
             return
 
     def _select_parser(self, file_path: str) -> DocumentParser | None:
-        """Выбрать парсер по типу файла"""
+        """Pick the first parser that can handle the file."""
         path = Path(file_path)
         for parser in self._document_parsers:
             try:
@@ -151,22 +152,20 @@ class EmailProcessingUseCase:
             except Exception:
                 continue
         return None
-    
+
     def _is_valid_attachment(self, attachment) -> bool:
-        """Проверить валидность вложения"""
-        # Проверка размера, типа файла, etc
+        """Legacy placeholder kept for compatibility."""
         return True
 
 
 class InvoiceValidationUseCase:
-    """Use case для валидации данных счетов"""
-    
+    """Simple invoice validation use case."""
+
     def __init__(self, repository: ProcessedInvoiceRepository):
         self._repository = repository
-    
+
     def validate_invoice_data(self, invoice: Invoice) -> bool:
-        """Валидировать данные счета"""
-        # Проверки бизнес-правил
+        """Validate minimal invoice business constraints."""
         if invoice.amount <= 0:
             return False
         if not invoice.partner_id:

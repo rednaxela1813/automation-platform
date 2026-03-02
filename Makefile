@@ -1,77 +1,77 @@
-# Makefile для Email Automation Platform
+# Makefile for Email Automation Platform
 
 .PHONY: help install dev-install test lint format type-check clean run docker-build docker-up docker-down setup-dev
 
-# Переменные
+# Variables
 PYTHON := python3.12
 PIP := pip3
 VENV := .venv
 ACTIVATE := $(VENV)/bin/activate
 
-help: ## Показать справку по командам
+help: ## Show command help
 	@echo "Email Automation Platform - Development Commands"
 	@echo "================================================="
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# Установка и настройка
-install: ## Установить зависимости
+# Install and setup
+install: ## Install dependencies
 	$(PIP) install -e .
 
-dev-install: ## Установить зависимости для разработки
+dev-install: ## Install development dependencies
 	$(PIP) install -e ".[dev]"
 
-setup-dev: ## Полная настройка среды разработки
-	@echo "🚀 Настройка среды разработки..."
+setup-dev: ## Full development environment setup
+	@echo "🚀 Setting up development environment..."
 	cp .env.example .env
 	mkdir -p storage/safe storage/quarantine logs
 	$(MAKE) dev-install
-	@echo "✅ Среда разработки настроена!"
-	@echo "📝 Не забудьте отредактировать .env файл с вашими настройками"
+	@echo "✅ Development environment is ready!"
+	@echo "📝 Do not forget to edit .env with your settings"
 
-venv: ## Создать виртуальное окружение
+venv: ## Create virtual environment
 	$(PYTHON) -m venv $(VENV)
-	@echo "Активируйте окружение: source $(ACTIVATE)"
+	@echo "Activate environment: source $(ACTIVATE)"
 
-# Разработка
-run: ## Запустить сервер для разработки
+# Development
+run: ## Run development server
 	$(PYTHON) run.py
 
-run-prod: ## Запустить сервер в production режиме
+run-prod: ## Run server in production mode
 	uvicorn automation.main:app --host 0.0.0.0 --port 8000
 
-celery-worker: ## Запустить Celery worker
+celery-worker: ## Run Celery worker
 	celery -A automation.celery_app worker --loglevel=info
 
-celery-beat: ## Запустить Celery beat scheduler
+celery-beat: ## Run Celery beat scheduler
 	celery -A automation.celery_app beat --loglevel=info
 
-celery-monitor: ## Запустить Celery flower для мониторинга
+celery-monitor: ## Run Celery Flower for monitoring
 	celery -A automation.celery_app flower --port=5555
 
-# Тестирование и качество кода
-test: ## Запустить тесты
+# Testing and code quality
+test: ## Run tests
 	pytest src/automation/tests/ -v
 
-test-cov: ## Запустить тесты с покрытием
+test-cov: ## Run tests with coverage
 	pytest src/automation/tests/ --cov=automation --cov-report=html --cov-report=term
 
-test-integration: ## Запустить интеграционные тесты
+test-integration: ## Run integration tests
 	pytest src/automation/tests/ -m integration -v
 
-lint: ## Проверить код с помощью ruff
+lint: ## Check code with ruff
 	ruff check src/ --config pyproject.toml
 
-format: ## Форматировать код
+format: ## Format code
 	ruff format src/
 	ruff check src/ --fix
 
-type-check: ## Проверить типы с mypy
+type-check: ## Type-check with mypy
 	mypy src/automation/
 
-quality: lint type-check ## Проверить качество кода (lint + type-check)
+quality: lint type-check ## Check code quality (lint + type-check)
 
-# Очистка
-clean: ## Очистить временные файлы
+# Cleanup
+clean: ## Clean temporary files
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} +
@@ -79,81 +79,81 @@ clean: ## Очистить временные файлы
 	find . -type d -name ".mypy_cache" -exec rm -rf {} +
 	rm -rf build/ dist/ htmlcov/
 
-clean-storage: ## Очистить файлы в storage (ОСТОРОЖНО!)
-	@echo "⚠️  Это удалит все файлы в storage директориях!"
-	@read -p "Продолжить? (y/N): " confirm && [ "$$confirm" = "y" ]
+clean-storage: ## Clean files in storage (CAUTION!)
+	@echo "⚠️  This will delete all files in storage directories!"
+	@read -p "Continue? (y/N): " confirm && [ "$$confirm" = "y" ]
 	rm -rf storage/safe/* storage/quarantine/*
-	@echo "Storage очищен"
+	@echo "Storage cleaned"
 
 # Docker
-docker-build: ## Собрать Docker образ
+docker-build: ## Build Docker image
 	docker build -t automation-platform:latest .
 
-docker-up: ## Запустить все сервисы через Docker Compose
+docker-up: ## Start all services via Docker Compose
 	docker-compose up -d
 
-docker-down: ## Остановить все сервисы Docker Compose
+docker-down: ## Stop all Docker Compose services
 	docker-compose down
 
-docker-logs: ## Показать логи Docker контейнеров
+docker-logs: ## Show Docker container logs
 	docker-compose logs -f
 
-docker-shell: ## Открыть shell в основном контейнере
+docker-shell: ## Open shell in main container
 	docker-compose exec automation-platform bash
 
-# База данных
-db-init: ## Инициализировать базу данных
+# Database
+db-init: ## Initialize database
 	$(PYTHON) -c "from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository; from pathlib import Path; SqliteProcessedInvoiceRepository(Path('automation.db'))"
 
-db-reset: ## Сбросить базу данных (ОСТОРОЖНО!)
-	@echo "⚠️  Это удалит всю базу данных!"
-	@read -p "Продолжить? (y/N): " confirm && [ "$$confirm" = "y" ]
+db-reset: ## Reset database (CAUTION!)
+	@echo "⚠️  This will delete the entire database!"
+	@read -p "Continue? (y/N): " confirm && [ "$$confirm" = "y" ]
 	rm -f automation.db
 	$(MAKE) db-init
 
-# Мониторинг и отладка
-logs: ## Показать логи приложения
+# Monitoring and debugging
+logs: ## Show application logs
 	tail -f logs/automation.log
 
-monitor: ## Запустить мониторинг системы
+monitor: ## Run system monitoring
 	watch -n 2 'df -h; echo ""; ps aux | grep -E "(python|celery)" | head -10'
 
-health-check: ## Проверить состояние системы
-	curl -f http://localhost:8000/api/v1/system/stats || echo "Сервер не отвечает"
+health-check: ## Check system status
+	curl -f http://localhost:8000/api/v1/system/stats || echo "Server is not responding"
 
-# Документация
-docs-serve: ## Запустить локальный сервер документации
-	@echo "📚 Документация API доступна по адресу:"
+# Documentation
+docs-serve: ## Run local documentation server
+	@echo "📚 API documentation available at:"
 	@echo "   Swagger UI: http://localhost:8000/docs"
 	@echo "   ReDoc: http://localhost:8000/redoc"
 
 # Deployment
-deploy-staging: ## Деплой в staging окружение
-	@echo "🚀 Деплой в staging..."
-	# Здесь будут команды для деплоя
+deploy-staging: ## Deploy to staging
+	@echo "🚀 Deploying to staging..."
+	# Deployment commands go here
 
-deploy-production: ## Деплой в production окружение
-	@echo "🚀 Деплой в production..."
-	@read -p "Подтвердите деплой в production (yes): " confirm && [ "$$confirm" = "yes" ]
-	# Здесь будут команды для production деплоя
+deploy-production: ## Deploy to production
+	@echo "🚀 Deploying to production..."
+	@read -p "Confirm production deployment (yes): " confirm && [ "$$confirm" = "yes" ]
+	# Production deployment commands go here
 
-# Утилиты
-check-deps: ## Проверить устаревшие зависимости
+# Utilities
+check-deps: ## Check outdated dependencies
 	$(PIP) list --outdated
 
-backup: ## Создать резервную копию данных
-	@echo "📦 Создание резервной копии..."
+backup: ## Create data backup
+	@echo "📦 Creating backup..."
 	mkdir -p backups
 	cp -r storage/ backups/storage_$(shell date +%Y%m%d_%H%M%S)
 	cp automation.db backups/automation_$(shell date +%Y%m%d_%H%M%S).db
-	@echo "✅ Резервная копия создана в backups/"
+	@echo "✅ Backup created in backups/"
 
-security-check: ## Проверить безопасность зависимостей
+security-check: ## Check dependency security
 	$(PIP) install safety
 	safety check
 
-update-deps: ## Обновить зависимости
+update-deps: ## Update dependencies
 	$(PIP) install --upgrade -e ".[dev]"
 
-# По умолчанию показываем справку
+# Show help by default
 .DEFAULT_GOAL := help

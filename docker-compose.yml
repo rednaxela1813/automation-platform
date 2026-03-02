@@ -1,7 +1,7 @@
 
 
 services:
-  # Основное приложение
+  # Main application
   automation-platform:
     build: 
       context: .
@@ -28,7 +28,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # База данных для хранения состояний
+  # Database for state storage
   database:
     image: postgres:15-alpine
     container_name: automation-db
@@ -43,7 +43,7 @@ services:
     ports:
       - "5432:5432"
 
-  # Redis для кеширования и очередей
+  # Redis for caching and queues
   redis:
     image: redis:7-alpine
     container_name: automation-redis
@@ -54,7 +54,7 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
 
-  # Планировщик задач (Celery)
+  # Task scheduler (Celery)
   celery-worker:
     build: 
       context: .
@@ -71,7 +71,7 @@ services:
       - database
       - redis
 
-  # Celery Beat для периодических задач  
+  # Celery Beat for periodic tasks  
   celery-beat:
     build: 
       context: .
@@ -85,7 +85,7 @@ services:
       - database
       - redis
 
-  # Nginx для reverse proxy и статических файлов
+  # Nginx for reverse proxy and static files
   nginx:
     image: nginx:alpine
     container_name: automation-nginx

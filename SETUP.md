@@ -1,91 +1,43 @@
-# 🔧 Настройка Email Automation Platform
+# Email Automation Platform Setup
 
-## 📧 Настройка IMAP подключения
+## IMAP Configuration
 
-1. **Скопируйте и отредактируйте файл окружения:**
-
-   ```bash
-   cp .env.example .env
-   nano .env  # или используйте ваш любимый редактор
-   ```
-
-2. **Настройте IMAP parameters в .env файле:**
-   ```env
-   # Замените на ваши реальные настройки
-   IMAP_HOST=imap.gmail.com                    # Ваш IMAP сервер
-   IMAP_USER=your-email@gmail.com              # Ваш email
-   IMAP_PASSWORD=your-app-specific-password    # Пароль приложения
-   IMAP_MAILBOX=INBOX                          # Папка для сканирования
-   ```
-
-## 🔑 Получение credentials для различных провайдеров
-
-### Gmail:
-
-1. Включите 2FA в Google аккаунте
-2. Создайте App Password: https://support.google.com/accounts/answer/185833
-3. Используйте App Password вместо обычного пароля
-
-### Outlook/Hotmail:
-
-```env
-IMAP_HOST=outlook.office365.com
-IMAP_USER=your-email@outlook.com
-IMAP_PASSWORD=your-password
-```
-
-### Yahoo:
-
-```env
-IMAP_HOST=imap.mail.yahoo.com
-IMAP_USER=your-email@yahoo.com
-IMAP_PASSWORD=your-app-password
-```
-
-### Пользовательские серверы:
-
-```env
-IMAP_HOST=mail.yourdomain.com
-IMAP_USER=your-email@yourdomain.com
-IMAP_PASSWORD=your-password
-```
-
-## 🏃‍♂️ Быстрый тест подключения
-
+1. Copy and edit the environment file:
 ```bash
-# Запустите приложение
-make run
-
-# В другом терминале протестируйте подключение
-curl -X POST "http://localhost:8000/api/v1/system/test-connection"
+cp .env.example .env
+nano .env
 ```
 
-## ⚠️ Безопасность
-
-- ❌ **НЕ коммитьте .env файл в git**
-- ✅ **Используйте App Passwords вместо основных паролей**
-- ✅ **Регулярно меняйте credentials**
-- ✅ **Ограничьте IMAP доступ по IP если возможно**
-
-## 📝 Дополнительные настройки
-
-Другие параметры в .env файле:
-
+2. Configure IMAP values:
 ```env
-# API настройки
-API_ENDPOINT=https://your-api.example.com/invoices
-API_KEY=your-secret-api-key
-
-# База данных
-DATABASE_URL=sqlite:///./automation.db
-
-# Хранилище файлов
-SAFE_STORAGE_DIR=./storage/safe
-QUARANTINE_DIR=./storage/quarantine
-MAX_FILE_SIZE_MB=50
-
-# Режим отладки
-DEBUG=false
+IMAP_HOST=imap.gmail.com
+IMAP_USER=your-email@gmail.com
+IMAP_PASSWORD=your-app-specific-password
+IMAP_MAILBOX=INBOX
 ```
 
-Готово! 🚀 Ваш Email Automation Platform настроен и готов к работе.
+## Provider Notes
+
+### Gmail
+1. Enable 2FA for your Google account.
+2. Create an App Password: https://support.google.com/accounts/answer/185833
+3. Use the App Password instead of your main password.
+
+### Custom servers
+Set the host, port, and mailbox according to your provider documentation.
+
+## Quick Connection Test
+```bash
+python run.py
+# In another terminal:
+python test_imap.py
+```
+
+## Security Recommendations
+- Never commit `.env` to git.
+- Use app passwords whenever possible.
+- Rotate credentials regularly.
+- Restrict IMAP access by IP if your provider supports it.
+
+## Additional Settings
+You can also configure API host/port, database path, storage paths, and debug mode in `.env`.

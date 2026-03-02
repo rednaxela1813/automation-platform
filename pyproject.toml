@@ -21,18 +21,18 @@ dependencies = [
     "python-docx>=1.1.0",
     "lxml>=5.0.0",
     "aiofiles>=23.0.0",
-    # Фоновые задачи
+    # Background tasks
     "celery[redis]>=5.3.0",
     "redis>=5.0.0",
-    # Мониторинг системы
+    # System monitoring
     "psutil>=5.9.0",
-    # База данных
+    # Database
     "sqlalchemy>=2.0.0",
     "alembic>=1.12.0",
-    # Безопасность и хеширование
+    # Security and hashing
     "cryptography>=41.0.0",
     "passlib[bcrypt]>=1.7.4",
-    # HTTP клиенты
+    # HTTP clients
     "httpx>=0.25.0",
 ]
 
@@ -56,7 +56,12 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["src/automation/tests"]
+markers = [
+    "integration: integration tests",
+]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "I"]
