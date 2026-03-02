@@ -1,5 +1,6 @@
 # Dockerfile for Email Automation Platform
-FROM python:3.12-slim as base
+FROM python:3.13-slim AS base
+
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

@@ -4,10 +4,6 @@ Test new Shopify PDF parser with real files
 """
 
 from pathlib import Path
-import sys
-
-# Add module path
-sys.path.append('/Users/alexanderkiselev/Documents/programming/automation/automation-platform/src')
 
 from automation.adapters.shopify_pdf_parser import ShopifyPdfInvoiceParser
 

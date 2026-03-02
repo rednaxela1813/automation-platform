@@ -45,7 +45,7 @@ dev = [
 ]
 
 [project.scripts]
-automation-server = "automation.main:app"
+automation-server = "automation.cli.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

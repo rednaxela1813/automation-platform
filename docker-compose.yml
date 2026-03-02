@@ -8,6 +8,9 @@ services:
       dockerfile: Dockerfile
     container_name: automation-platform
     restart: unless-stopped
+    user: "0:0"
+    command: >
+      sh -c "python -m pip install --no-cache-dir -e '.[dev]' && python run.py"
     ports:
       - "8000:8000"
     environment:
