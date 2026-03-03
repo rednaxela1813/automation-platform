@@ -1,83 +1,129 @@
 # Email Automation Platform
 
-A practical application for processing incoming emails with attachments and turning inbox noise into structured, usable data.
+Email Automation Platform is a practical project for processing invoice-like email attachments and turning them into structured data.
+
+The long-term goal is a convenient, reliable mailbox-processing app for daily operations.  
+Although this started as a learning project, it is treated as preparation for a more serious production-grade product.
 
 ## Why this project exists
 
-Many workflows have the same pain point: invoices, reports, and operational documents arrive by email and must be reviewed, saved, sorted, and entered manually into internal systems.
+Many teams still process invoice emails manually:
+- open mailbox,
+- download attachments,
+- validate files,
+- extract invoice fields,
+- pass data to internal systems.
 
-This project addresses that flow end-to-end:
-- connects to an IMAP mailbox,
-- extracts attachments,
-- stores files safely,
-- parses invoice-like data from documents,
-- exposes everything through an API and web interface.
+This project automates that pipeline and provides operational visibility through API and dashboard.
 
-## What it can do today
+## Current capabilities
 
-At its current stage, the platform already supports a full baseline processing pipeline:
+1. Connect to IMAP mailbox and fetch new messages.
+2. Extract attachments from emails.
+3. Validate file extension and file size.
+4. Store accepted files in `storage/safe`.
+5. Store rejected/suspicious files in `storage/quarantine` with quarantine metadata.
+6. Parse documents (PDF, Excel) and extract invoice data.
+7. Save parsed payload as `*.parsed.json` near source file in safe storage.
+8. Expose functionality through:
+- FastAPI REST endpoints
+- web dashboard (stats, recent files, quarantine list)
+- background tasks with Celery
 
-1. Connects to a mailbox via IMAP.
-2. Fetches new emails and extracts attachments.
-3. Validates file types and size limits.
-4. Stores safe files in `safe` storage and suspicious files in `quarantine`.
-5. Parses PDF/Excel files and extracts invoice fields.
-6. Provides:
-   - REST API (FastAPI),
-   - web dashboard (status, files, logs, settings),
-   - background scheduling with Celery.
+## Dashboard and API highlights
 
-## What it should do next
-
-The goal is to grow this into a genuinely convenient email-processing application, not just a demo.
-
-Near-term product direction:
-- higher parsing accuracy across more document layouts,
-- stronger duplicate/error handling,
-- more robust processing orchestration (queues, retries, monitoring),
-- better operator UX in the dashboard,
-- richer analytics and observability,
-- integrations with external systems (ERP/CRM/accounting).
-
-## Important context
-
-Even though this is currently a learning project, I treat it as preparation for a more serious product.
-
-It is meant to be a practical foundation:
-- to validate architecture decisions,
-- to test real workflow assumptions,
-- and to evolve step by step toward a production-grade solution.
+- View recent safe files and quarantine files in dashboard.
+- Open parsed JSON for a specific safe file.
+- Quarantine API now hides internal `*.quarantine_info.json` sidecar files from list totals.
+- Quarantine delete removes both payload file and its sidecar metadata file.
 
 ## Tech stack
 
-- Python + FastAPI
-- Celery (background tasks)
-- Redis (queue/broker)
+- Python 3.12+ (tested locally with Python 3.13)
+- FastAPI
+- Celery + Redis
 - SQLite (current stage)
-- Jinja2 templates (web UI)
+- Jinja2 templates
+- Pydantic Settings (`.env`-driven config)
+- Pytest + Ruff
 
-## Quick start
+## Project structure
+
+- `src/automation/main.py` - FastAPI app factory
+- `src/automation/api/endpoints/` - API endpoints (`emails`, `files`, `system`)
+- `src/automation/web/interface.py` - dashboard/web routes
+- `src/automation/app/use_cases.py` - application business logic
+- `src/automation/adapters/` - IMAP, parsers, storage, repository adapters
+- `src/automation/tasks/` - Celery background jobs
+- `src/automation/tests/` - automated tests
+
+## Local development
 
 ```bash
-# 1) Install
-pip install -e .
+# 1) Install dependencies
+pip install -e ".[dev]"
 
 # 2) Configure environment
 cp .env.example .env
-# fill in IMAP settings
+# fill IMAP credentials and other settings
 
-# 3) Start API
+# 3) Run API
 python run.py
 
-# 4) (optional) start background workers
+# 4) (optional) run workers
 celery -A automation.celery_app worker --loglevel=info
 celery -A automation.celery_app beat --loglevel=info
 ```
 
-API docs after startup:
+API docs:
 - `http://localhost:8000/docs`
 - `http://localhost:8000/redoc`
 
-## Current status
+## Docker
 
-The project is under active development. The architectural foundation and core processing flow are already in place; the next focus is parsing quality and UX polish so it becomes a useful day-to-day tool.
+```bash
+docker compose up -d --build
+```
+
+Current `docker-compose.yml` is configured so the `automation-platform` service installs dev dependencies on startup, which allows running tests inside the container:
+
+```bash
+docker compose exec automation-platform python -m pytest
+```
+
+## Tests and quality checks
+
+```bash
+pytest -q
+ruff check src
+```
+
+The test suite currently covers:
+- core use cases
+- SQLite repository behavior
+- key file/system/email API endpoint behavior
+- Shopify PDF parser regression scenarios
+- path traversal protection for quarantine operations
+
+## Current maturity
+
+This is an actively evolving portfolio project with a working core pipeline, not a finished product.
+
+Strong points:
+- clear modular architecture (ports/adapters + use cases)
+- usable API and dashboard
+- quarantine and parsed-data visibility
+- growing automated test coverage
+
+Current limitations:
+- parser accuracy still depends on document layout variance
+- operational flows and monitoring are still being hardened
+- production deployment/security/observability are not finalized yet
+
+## Roadmap direction
+
+- improve parsing accuracy for real-world invoice formats
+- expand integration tests and end-to-end test scenarios
+- improve dashboard UX for operational triage
+- strengthen retry/error handling and observability
+- prepare external integrations (ERP/CRM/accounting APIs)

@@ -9,10 +9,8 @@ from functools import lru_cache
 from fastapi import HTTPException
 
 from automation.adapters.email_imap import ImapEmailClient
-from automation.adapters.excel_parser import ExcelInvoiceParser
 from automation.adapters.file_storage import LocalFileStorage
-from automation.adapters.pdf_parser import PdfInvoiceParser
-from automation.adapters.shopify_pdf_parser import ShopifyPdfInvoiceParser
+from automation.adapters.parser_registry import get_document_parsers
 from automation.config.settings import Settings
 
 
@@ -36,7 +34,7 @@ async def get_file_storage() -> LocalFileStorage:
 
 async def get_document_parser():
     """Provide parser list dependency in priority order."""
-    return [ShopifyPdfInvoiceParser(), PdfInvoiceParser(), ExcelInvoiceParser()]
+    return get_document_parsers()
 
 
 async def verify_api_key(api_key: str | None = None):

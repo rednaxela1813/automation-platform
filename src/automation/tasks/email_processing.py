@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 from automation.adapters.email_imap import ImapEmailClient
-from automation.adapters.excel_parser import ExcelInvoiceParser
 from automation.adapters.file_storage import LocalFileStorage
-from automation.adapters.pdf_parser import PdfInvoiceParser
+from automation.adapters.parser_registry import get_document_parsers
 from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
 from automation.app.use_cases import EmailProcessingUseCase
 from automation.celery_app import celery_app
@@ -36,10 +35,7 @@ def process_new_emails_task(self) -> Dict[str, Any]:
         if db_path.startswith("sqlite:///"):
             db_path = db_path.replace("sqlite:///", "")
         repository = SqliteProcessedInvoiceRepository(Path(db_path))
-        document_parser = [
-            PdfInvoiceParser(),
-            ExcelInvoiceParser(),
-        ]
+        document_parser = get_document_parsers()
         file_storage = LocalFileStorage()
 
         # Create use case

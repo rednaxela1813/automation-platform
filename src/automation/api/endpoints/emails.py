@@ -61,11 +61,9 @@ async def process_emails_task(force_reprocess: bool = False, dry_run: bool = Fal
 
     try:
         from automation.adapters.email_imap import ImapEmailClient
-        from automation.adapters.excel_parser import ExcelInvoiceParser
         from automation.adapters.file_storage import LocalFileStorage
-        from automation.adapters.pdf_parser import PdfInvoiceParser
+        from automation.adapters.parser_registry import get_document_parsers
         from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
-        from automation.adapters.shopify_pdf_parser import ShopifyPdfInvoiceParser
         from automation.app.use_cases import EmailProcessingUseCase
         from automation.config.settings import settings
 
@@ -76,7 +74,7 @@ async def process_emails_task(force_reprocess: bool = False, dry_run: bool = Fal
             db_path = db_path.replace("sqlite:///", "")
         repository = SqliteProcessedInvoiceRepository(db_path)
 
-        document_parsers = [ShopifyPdfInvoiceParser(), PdfInvoiceParser(), ExcelInvoiceParser()]
+        document_parsers = get_document_parsers()
         file_storage = LocalFileStorage()
 
         use_case = EmailProcessingUseCase(
