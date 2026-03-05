@@ -6,6 +6,8 @@ import sys
 import os
 sys.path.insert(0, 'src')
 
+import pytest
+
 from automation.config.settings import settings
 import imaplib
 
@@ -38,13 +40,12 @@ def test_imap_connection():
                 print(f'🔢 IDs of latest messages: {message_ids[-5:]}')
             
             imap.logout()
-            return True
             
     except Exception as e:
         print(f'❌ IMAP connection error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"IMAP connection error: {e}")
 
 if __name__ == "__main__":
     test_imap_connection()

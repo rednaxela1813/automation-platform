@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from automation.config.settings import settings
 from automation.ports.email import EmailAttachment
 from automation.ports.file_storage import FileStorageResult
+from automation.adapters.security_scanner import SecurityScanner
 
 
 class LocalFileStorage:
@@ -29,6 +30,9 @@ class LocalFileStorage:
 
         # Convert file size from MB to bytes.
         self.max_file_size = settings.max_file_size_mb * 1024 * 1024
+
+        # Initialize security scanner
+        self.security_scanner = SecurityScanner()
 
     def store_attachment(self, attachment: EmailAttachment) -> tuple[FileStorageResult, str]:
         """Store an attachment and return the storage result plus file path."""
@@ -51,6 +55,17 @@ class LocalFileStorage:
             return False
 
         if self._contains_suspicious_content(attachment):
+            return False
+
+        # Enhanced security scan
+        is_safe, reason = self.security_scanner.scan_file_content(
+            attachment.content, attachment.filename
+        )
+        if not is_safe:
+            # Log the security reason for monitoring
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Security scan blocked file {attachment.filename}: {reason}")
             return False
 
         return True

@@ -26,12 +26,6 @@ dependencies = [
     "redis>=5.0.0",
     # System monitoring
     "psutil>=5.9.0",
-    # Database
-    "sqlalchemy>=2.0.0",
-    "alembic>=1.12.0",
-    # Security and hashing
-    "cryptography>=41.0.0",
-    "passlib[bcrypt]>=1.7.4",
     # HTTP clients
     "httpx>=0.25.0",
 ]
@@ -42,6 +36,7 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
     "pytest-cov>=4.0",
+    "pre-commit>=3.0.0",
 ]
 
 [project.scripts]

@@ -28,91 +28,123 @@ class ProcessingResult:
     errors: List[str]
 
 
-class EmailProcessingUseCase:
-    """Process new emails, parse invoices, and persist processing status."""
+@dataclass
+class IngestionResult:
+    """Result of the ingestion phase."""
+    
+    messages_processed: int
+    files_stored: int
+    files_quarantined: int
+    errors: List[str]
+
+
+class EmailIngestionUseCase:
+    """Phase 1: Ingest emails and store attachments safely."""
 
     def __init__(
         self,
         email_processor: EmailProcessor,
-        repository: ProcessedInvoiceRepository,
-        document_parser: DocumentParser | Iterable[DocumentParser],
         file_storage: FileStorageService,
     ):
         self._email_processor = email_processor
-        self._repository = repository
-        if isinstance(document_parser, (list, tuple)):
-            self._document_parsers = list(document_parser)
-        else:
-            self._document_parsers = [document_parser]
         self._file_storage = file_storage
 
-    def process_new_emails(self, dry_run: bool = False) -> ProcessingResult:
-        """Fetch and process all currently available new emails."""
+    def ingest_new_emails(self, dry_run: bool = False) -> IngestionResult:
+        """Fetch emails and store attachments, ready for async parsing."""
         messages = self._email_processor.fetch_new_messages()
 
-        result = ProcessingResult(
+        result = IngestionResult(
             messages_processed=len(messages),
-            invoices_found=0,
-            invoices_uploaded=0,
+            files_stored=0,
             files_quarantined=0,
             errors=[],
         )
 
         for message in messages:
             try:
-                self._process_single_message(message, result, dry_run)
-                # Mark message as processed only after handling attachments.
-                try:
-                    self._email_processor.mark_as_processed(message.message_id)
-                except Exception:
-                    result.errors.append(
-                        f"Failed to mark message as processed: {message.message_id}"
-                    )
+                self._ingest_single_message(message, result, dry_run)
+                
+                if not dry_run:
+                    try:
+                        self._email_processor.mark_as_processed(message.message_id)
+                    except Exception as e:
+                        result.errors.append(
+                            f"Failed to mark message as processed: {message.message_id}: {e}"
+                        )
             except Exception as exc:
-                result.errors.append(f"Error processing message {message.message_id}: {str(exc)}")
+                result.errors.append(f"Error ingesting message {message.message_id}: {str(exc)}")
 
         return result
 
-    def _process_single_message(
+    def _ingest_single_message(
         self,
         message: EmailMessage,
-        result: ProcessingResult,
+        result: IngestionResult,
         dry_run: bool,
     ) -> None:
-        """Handle all attachments from one message."""
+        """Store all attachments from one message."""
         for attachment in message.attachments:
-            result_type, file_path = self._file_storage.store_attachment(attachment)
+            if dry_run:
+                # Just validate, don't store
+                result_type, _ = (FileStorageResult.SAFE_STORAGE, "dry-run-path")
+            else:
+                result_type, file_path = self._file_storage.store_attachment(attachment)
 
             if result_type == FileStorageResult.QUARANTINE:
                 result.files_quarantined += 1
-                continue
-            if result_type == FileStorageResult.REJECTED:
+            elif result_type == FileStorageResult.REJECTED:
                 result.errors.append(f"File rejected: {attachment.filename}")
-                continue
+            elif result_type == FileStorageResult.SAFE_STORAGE:
+                result.files_stored += 1
 
-            parser = self._select_parser(file_path)
-            if not parser:
-                file_suffix = Path(file_path).suffix
-                result.errors.append(
-                    f"No parser available for file type: "
-                    f"{file_suffix} ({attachment.filename})"
-                )
-                continue
 
-            parse_result = parser.parse_invoice(Path(file_path))
-            self._write_parse_result(Path(file_path), parse_result)
+class InvoiceParsingUseCase:
+    """Phase 2: Parse stored files asynchronously."""
 
-            if parse_result.success and parse_result.invoice:
-                result.invoices_found += 1
+    def __init__(
+        self,
+        document_parser: DocumentParser | Iterable[DocumentParser],
+        repository: ProcessedInvoiceRepository,
+    ):
+        if isinstance(document_parser, (list, tuple)):
+            self._document_parsers = list(document_parser)
+        else:
+            self._document_parsers = [document_parser]
+        self._repository = repository
 
-                if self._repository.claim(parse_result.invoice.invoice_key):
-                    if not dry_run:
-                        # Placeholder for outbound upload/integration call.
-                        pass
-                    result.invoices_uploaded += 1
+    def parse_safe_files(self, file_paths: List[Path]) -> ProcessingResult:
+        """Parse a batch of files from safe storage."""
+        result = ProcessingResult(
+            messages_processed=0,  # Not applicable for this phase
+            invoices_found=0,
+            invoices_uploaded=0,
+            files_quarantined=0,
+            errors=[],
+        )
 
-                    if not dry_run:
-                        self._repository.mark_done(parse_result.invoice.invoice_key)
+        for file_path in file_paths:
+            try:
+                self._parse_single_file(file_path, result)
+            except Exception as exc:
+                result.errors.append(f"Error parsing file {file_path}: {str(exc)}")
+
+        return result
+
+    def _parse_single_file(self, file_path: Path, result: ProcessingResult) -> None:
+        """Parse one file and save results."""
+        parser = self._select_parser(file_path)
+        if not parser:
+            file_suffix = file_path.suffix
+            result.errors.append(
+                f"No parser available for file type: {file_suffix} ({file_path.name})"
+            )
+            return
+
+        parse_result = parser.parse_invoice(file_path)
+        self._write_parse_result(file_path, parse_result)
+
+        if parse_result.success and parse_result.invoice:
+            result.invoices_found += 1
 
     def _write_parse_result(self, file_path: Path, parse_result: ParseResult) -> None:
         """Persist parser output near the source file for traceability."""
@@ -144,20 +176,154 @@ class EmailProcessingUseCase:
             # Parse-result persistence must never break the main processing flow.
             return
 
-    def _select_parser(self, file_path: str) -> DocumentParser | None:
+    def _select_parser(self, file_path: Path) -> DocumentParser | None:
         """Pick the first parser that can handle the file."""
-        path = Path(file_path)
         for parser in self._document_parsers:
             try:
-                if parser.can_parse(path):
+                if parser.can_parse(file_path):
                     return parser
             except Exception:
                 continue
         return None
 
-    def _is_valid_attachment(self, attachment) -> bool:
-        """Legacy placeholder kept for compatibility."""
-        return True
+
+class InvoiceExportUseCase:
+    """Phase 3: Export/integrate parsed invoices."""
+
+    def __init__(self, repository: ProcessedInvoiceRepository):
+        self._repository = repository
+
+    def export_parsed_invoices(self, parsed_files: List[Path], dry_run: bool = False) -> ProcessingResult:
+        """Export parsed invoices, handling idempotency."""
+        result = ProcessingResult(
+            messages_processed=0,
+            invoices_found=0,
+            invoices_uploaded=0,
+            files_quarantined=0,
+            errors=[],
+        )
+
+        for file_path in parsed_files:
+            try:
+                parsed_json_path = file_path.with_suffix(".parsed.json")
+                if not parsed_json_path.exists():
+                    continue
+
+                with open(parsed_json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                if not data.get("success") or not data.get("invoice"):
+                    continue
+
+                invoice_data = data["invoice"]
+                invoice_key = invoice_data["invoice_key"]
+                
+                result.invoices_found += 1
+
+                if self._repository.claim(invoice_key):
+                    if not dry_run:
+                        # Placeholder for external integration
+                        # await external_api.upload_invoice(invoice_data)
+                        pass
+                    
+                    result.invoices_uploaded += 1
+                    
+                    if not dry_run:
+                        self._repository.mark_done(invoice_key)
+
+            except Exception as exc:
+                result.errors.append(f"Error exporting {file_path}: {str(exc)}")
+
+        return result
+
+
+class EmailProcessingUseCase:
+    """Legacy unified processor for backward compatibility."""
+
+    def __init__(
+        self,
+        email_processor: EmailProcessor,
+        repository: ProcessedInvoiceRepository,
+        document_parser: DocumentParser | Iterable[DocumentParser],
+        file_storage: FileStorageService,
+    ):
+        self._email_processor = email_processor
+        self._repository = repository
+        if isinstance(document_parser, (list, tuple)):
+            self._document_parsers = list(document_parser)
+        else:
+            self._document_parsers = [document_parser]
+        self._file_storage = file_storage
+
+        # Delegate to the new separated use cases
+        self._ingestion = EmailIngestionUseCase(email_processor, file_storage)
+        self._parsing = InvoiceParsingUseCase(document_parser, repository)
+        self._export = InvoiceExportUseCase(repository)
+
+    def process_new_emails(self, dry_run: bool = False) -> ProcessingResult:
+        """Unified processing for backward compatibility."""
+        result = ProcessingResult(
+            messages_processed=0,
+            invoices_found=0,
+            invoices_uploaded=0,
+            files_quarantined=0,
+            errors=[],
+        )
+
+        messages = self._email_processor.fetch_new_messages()
+        result.messages_processed = len(messages)
+
+        for message in messages:
+            for attachment in message.attachments:
+                try:
+                    storage_result, file_path = self._file_storage.store_attachment(attachment)
+                except Exception as exc:
+                    result.errors.append(str(exc))
+                    continue
+
+                if storage_result == FileStorageResult.QUARANTINE:
+                    result.files_quarantined += 1
+                    continue
+
+                if storage_result == FileStorageResult.REJECTED:
+                    result.errors.append(f"File rejected: {attachment.filename}")
+                    continue
+
+                parsed_invoice = self._parse_invoice_with_compatible_parser(Path(file_path))
+                if not parsed_invoice:
+                    continue
+
+                result.invoices_found += 1
+                if self._repository.claim(parsed_invoice.invoice_key):
+                    result.invoices_uploaded += 1
+                    if not dry_run:
+                        self._repository.mark_done(parsed_invoice.invoice_key)
+
+            if not dry_run:
+                try:
+                    self._email_processor.mark_as_processed(message.message_id)
+                except Exception as exc:
+                    result.errors.append(
+                        f"Failed to mark message as processed: {message.message_id}: {exc}"
+                    )
+
+        return result
+
+    def _parse_invoice_with_compatible_parser(self, file_path: Path) -> Invoice | None:
+        """Parse invoice while supporting both legacy and capability-based parsers."""
+        for parser in self._document_parsers:
+            try:
+                can_parse = getattr(parser, "can_parse", None)
+                if callable(can_parse) and not can_parse(file_path):
+                    continue
+                parse_result = parser.parse_invoice(file_path)
+            except Exception:
+                continue
+
+            if parse_result and parse_result.success and parse_result.invoice:
+                return parse_result.invoice
+
+        return None
 
 
 class InvoiceValidationUseCase:

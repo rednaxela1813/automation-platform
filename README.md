@@ -8,6 +8,7 @@ Although this started as a learning project, it is treated as preparation for a 
 ## Why this project exists
 
 Many teams still process invoice emails manually:
+
 - open mailbox,
 - download attachments,
 - validate files,
@@ -26,6 +27,7 @@ This project automates that pipeline and provides operational visibility through
 6. Parse documents (PDF, Excel) and extract invoice data.
 7. Save parsed payload as `*.parsed.json` near source file in safe storage.
 8. Expose functionality through:
+
 - FastAPI REST endpoints
 - web dashboard (stats, recent files, quarantine list)
 - background tasks with Celery
@@ -36,6 +38,15 @@ This project automates that pipeline and provides operational visibility through
 - Open parsed JSON for a specific safe file.
 - Quarantine API now hides internal `*.quarantine_info.json` sidecar files from list totals.
 - Quarantine delete removes both payload file and its sidecar metadata file.
+
+![Dashboard](docs/images/Screenshot%202026-03-05%20at%2010.31.18.png)
+
+## Security
+
+✅ **Secret rotation completed**: All credentials have been rotated after SECURITY_WARNING incident  
+✅ **Pre-commit hooks**: Gitleaks + TruffleHog for secret detection  
+✅ **File safety**: Quarantine system protects against malicious attachments  
+✅ **CI/CD security**: Automated safety and bandit scans
 
 ## Tech stack
 
@@ -76,6 +87,7 @@ celery -A automation.celery_app beat --loglevel=info
 ```
 
 API docs:
+
 - `http://localhost:8000/docs`
 - `http://localhost:8000/redoc`
 
@@ -99,6 +111,7 @@ ruff check src
 ```
 
 The test suite currently covers:
+
 - core use cases
 - SQLite repository behavior
 - key file/system/email API endpoint behavior
@@ -110,12 +123,14 @@ The test suite currently covers:
 This is an actively evolving portfolio project with a working core pipeline, not a finished product.
 
 Strong points:
+
 - clear modular architecture (ports/adapters + use cases)
 - usable API and dashboard
 - quarantine and parsed-data visibility
 - growing automated test coverage
 
 Current limitations:
+
 - parser accuracy still depends on document layout variance
 - operational flows and monitoring are still being hardened
 - production deployment/security/observability are not finalized yet

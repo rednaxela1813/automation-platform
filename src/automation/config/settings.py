@@ -51,6 +51,26 @@ class Settings(BaseSettings):
     ]
     scan_interval_minutes: int = 5
 
+    # Enhanced security limits
+    max_pdf_pages: int = 100
+    max_text_size_kb: int = 1024  # 1MB of extracted text
+    max_archive_files: int = 50
+    max_archive_ratio: float = 10.0  # Compression ratio for zip-bomb detection
+    dangerous_extensions: list[str] = [
+        ".exe", ".scr", ".com", ".bat", ".cmd", ".pif", ".jar", ".js", ".vbs", 
+        ".ps1", ".sh", ".app", ".deb", ".rpm", ".dmg", ".iso"
+    ]
+    
+    # Antivirus settings
+    enable_clamav: bool = False
+    clamav_socket: str = "/var/run/clamav/clamd.ctl"
+    quarantine_on_virus: bool = True
+
+    # Retry settings  
+    max_retry_attempts: int = 3
+    retry_backoff_minutes: int = 15  # Exponential backoff base
+    failed_retry_after_hours: int = 24  # Retry failed items after N hours
+
     # Config for loading .env file
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False

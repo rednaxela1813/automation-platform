@@ -18,6 +18,7 @@ celery_app = Celery(
         "automation.tasks.email_processing",
         "automation.tasks.file_cleanup",
         "automation.tasks.monitoring",
+        "automation.tasks.retry_processing",
     ],
 )
 
@@ -43,6 +44,7 @@ celery_app.conf.update(
         "automation.tasks.email_processing.*": {"queue": "email_processing"},
         "automation.tasks.file_cleanup.*": {"queue": "file_cleanup"},
         "automation.tasks.monitoring.*": {"queue": "monitoring"},
+        "automation.tasks.retry_processing.*": {"queue": "retry_processing"},
     },
     # Periodic tasks (Celery Beat)
     beat_schedule={
@@ -63,6 +65,18 @@ celery_app.conf.update(
             "task": "automation.tasks.monitoring.system_health_check_task",
             "schedule": crontab(minute="*/10"),
             "options": {"queue": "monitoring"},
+        },
+        # Retry failed invoices every 30 minutes
+        "retry-failed-invoices": {
+            "task": "automation.tasks.retry_processing.retry_failed_invoices_task",
+            "schedule": crontab(minute="*/30"),
+            "options": {"queue": "retry_processing"},
+        },
+        # Cleanup old database records weekly
+        "cleanup-old-records": {
+            "task": "automation.tasks.retry_processing.cleanup_old_records_task",
+            "schedule": crontab(hour=3, minute=0, day_of_week=1),  # Monday 3:00 AM
+            "options": {"queue": "retry_processing"},
         },
     },
 )
