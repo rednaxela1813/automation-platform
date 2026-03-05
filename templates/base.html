@@ -175,8 +175,8 @@
       }, 30000);
 
       function updateMetrics() {
-        // Fetch current system metrics from API
-        fetch("/api/v1/system/stats")
+        // Use the same stats source as dashboard server-side render.
+        fetch("/api/web/stats")
           .then((response) => response.json())
           .then((data) => {
             // Update matching metric elements on the page
