@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import imaplib
 import json
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -17,6 +18,7 @@ from automation.config.settings import settings
 
 templates = Jinja2Templates(directory="templates")
 web_router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class WebStats(BaseModel):
@@ -82,7 +84,7 @@ def get_web_stats() -> WebStats:
             last_processing_time=datetime.now() if safe_files > 0 else None,
         )
     except Exception as exc:
-        print(f"Error getting web stats: {exc}")
+        logger.exception("Error getting web stats: %s", exc)
         return WebStats()
 
 
@@ -124,7 +126,7 @@ def get_recent_files(limit: int = 5) -> List[FileInfo]:
             )
 
     except Exception as exc:
-        print(f"Error getting recent files: {exc}")
+        logger.exception("Error getting recent files: %s", exc)
 
     return files
 
@@ -170,7 +172,7 @@ def get_recent_quarantine_files(limit: int = 5) -> List[QuarantineFileInfo]:
                 )
             )
     except Exception as exc:
-        print(f"Error getting recent quarantine files: {exc}")
+        logger.exception("Error getting recent quarantine files: %s", exc)
 
     return files
 

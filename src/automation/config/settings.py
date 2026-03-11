@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +21,12 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    cors_allowed_origins: list[str] | str = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     # File storage
     safe_storage_dir: str = "./storage/safe"
@@ -75,6 +83,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
+
+    def resolved_cors_allowed_origins(self) -> list[str]:
+        """Normalize CORS origins from env into a list."""
+        value: Any = self.cors_allowed_origins
+        if isinstance(value, list):
+            return [origin.strip() for origin in value if origin.strip()]
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return []
 
 
 settings = Settings()

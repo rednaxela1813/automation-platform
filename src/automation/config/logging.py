@@ -17,6 +17,7 @@ def setup_logging(
     log_file: Optional[Path] = None,
     max_bytes: int = 10 * 1024 * 1024,  # 10MB
     backup_count: int = 5,
+    force: bool = False,
 ) -> logging.Logger:
     """
     Configure application logging
@@ -31,8 +32,10 @@ def setup_logging(
         Configured logger
     """
 
-    # Create main logger
     logger = logging.getLogger("automation")
+    if logger.handlers and not force:
+        return logger
+
     logger.setLevel(getattr(logging, log_level.upper()))
 
     # Clear existing handlers
@@ -65,7 +68,7 @@ def setup_logging(
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
     logging.getLogger("fastapi").setLevel(logging.WARNING)
 
-    logger.info(f"Logging setup completed. Level: {log_level}, File: {log_file}")
+    logger.info("Logging setup completed. Level: %s, File: %s", log_level, log_file)
 
     return logger
 
@@ -75,6 +78,10 @@ def get_logger(name: str = "automation") -> logging.Logger:
     return logging.getLogger(name)
 
 
-# Configure logging at module import
-log_file = Path(settings.log_dir) / "automation.log" if not settings.debug else None
-setup_logging(log_level="DEBUG" if settings.debug else "INFO", log_file=log_file)
+def configure_logging() -> logging.Logger:
+    """Configure logging using application settings."""
+    log_file = Path(settings.log_dir) / "automation.log" if not settings.debug else None
+    return setup_logging(
+        log_level="DEBUG" if settings.debug else "INFO",
+        log_file=log_file,
+    )

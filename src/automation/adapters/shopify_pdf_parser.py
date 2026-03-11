@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -12,6 +13,8 @@ import pdfplumber
 
 from automation.domain.models import Invoice
 from automation.ports.document_parser import ParseResult
+
+logger = logging.getLogger(__name__)
 
 
 class ShopifyPdfInvoiceParser:
@@ -124,17 +127,18 @@ class ShopifyPdfInvoiceParser:
                         invoice_data,
                     )
                 except (ValueError, TypeError, InvalidOperation) as e:
-                    print(f"❌ Invoice creation error: {e}")
+                    logger.exception("Invoice creation error: %s", e)
                     return None, invoice_data
 
-            print(
-                f"⚠️ Not enough data for parsing: "
-                f"number={invoice_data['invoice_number']}, amount={invoice_data['amount']}"
+            logger.warning(
+                "Not enough data for parsing: number=%s, amount=%s",
+                invoice_data["invoice_number"],
+                invoice_data["amount"],
             )
             return None, invoice_data
 
         except Exception as e:
-            print(f"❌ Shopify parsing error: {e}")
+            logger.exception("Shopify parsing error: %s", e)
             return None, {}
 
     def _extract_invoice_number(self, text: str, filename: str, lines: list[str]) -> Optional[str]:

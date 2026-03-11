@@ -1,35 +1,38 @@
 #!/usr/bin/env python3
-# automation-platform/run.py
+"""Entrypoint script for starting the Email Automation Platform API server."""
 
-"""
-Script to run the Email Automation Platform FastAPI server
-"""
+from __future__ import annotations
+
+import logging
 import sys
 from pathlib import Path
 
-# Add src directory to PYTHONPATH
+import uvicorn
+
 project_root = Path(__file__).parent
 src_path = project_root / "src"
 sys.path.insert(0, str(src_path))
 
-import uvicorn
+from automation.config.logging import configure_logging  # noqa: E402
+from automation.config.settings import settings  # noqa: E402
 
-from automation.config.settings import settings
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
-def main():
-    """Run FastAPI server using configured settings"""
-    print(f"🚀 Starting Email Automation Platform on {settings.host}:{settings.port}")
-    print(f"📚 API docs: http://{settings.host}:{settings.port}/docs")
-    print(f"🔄 Debug mode: {settings.debug}")
-    
+def main() -> None:
+    """Run FastAPI server using configured settings."""
+    logger.info("Starting Email Automation Platform on %s:%s", settings.host, settings.port)
+    logger.info("API docs: http://%s:%s/docs", settings.host, settings.port)
+    logger.info("Debug mode: %s", settings.debug)
+
     uvicorn.run(
         "automation.main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
         reload_dirs=["src"] if settings.debug else None,
-        log_level="info"
+        log_level="info",
     )
 
 

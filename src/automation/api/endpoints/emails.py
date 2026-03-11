@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -11,6 +12,7 @@ from automation.api.dependencies import get_settings
 from automation.config.settings import Settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class ProcessingStatusResponse(BaseModel):
@@ -57,7 +59,11 @@ async def get_processing_status():
 
 async def process_emails_task(force_reprocess: bool = False, dry_run: bool = False):
     """Run one email processing cycle in background."""
-    print(f"🚀 Starting email processing: force={force_reprocess}, dry_run={dry_run}")
+    logger.info(
+        "Starting email processing task: force_reprocess=%s dry_run=%s",
+        force_reprocess,
+        dry_run,
+    )
 
     try:
         from automation.adapters.email_imap import ImapEmailClient
@@ -86,14 +92,14 @@ async def process_emails_task(force_reprocess: bool = False, dry_run: bool = Fal
 
         result = use_case.process_new_emails(dry_run=dry_run)
 
-        print(
-            f"✅ Email processing completed: {result.messages_processed} messages, "
-            f"{result.invoices_found} invoices found, {result.invoices_uploaded} uploaded, "
-            f"{result.files_quarantined} quarantined"
+        logger.info(
+            "Email processing completed: %s messages, %s invoices found, "
+            "%s uploaded, %s quarantined",
+            result.messages_processed,
+            result.invoices_found,
+            result.invoices_uploaded,
+            result.files_quarantined,
         )
 
     except Exception as exc:
-        print(f"❌ Email processing failed: {str(exc)}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("Email processing failed: %s", str(exc))

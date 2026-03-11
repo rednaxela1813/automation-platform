@@ -4,10 +4,16 @@ Celery configuration for background tasks
 
 from __future__ import annotations
 
+import logging
+
 from celery import Celery
 from celery.schedules import crontab
 
+from automation.config.logging import configure_logging
 from automation.config.settings import settings
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 # Create Celery instance
 celery_app = Celery(
@@ -85,7 +91,7 @@ celery_app.conf.update(
 @celery_app.task(bind=True)
 def debug_task(self):
     """Debug task for Celery verification"""
-    print(f"Request: {self.request!r}")
+    logger.info("Celery debug task request: %r", self.request)
     return {"status": "success", "message": "Debug task completed"}
 
 
