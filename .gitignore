@@ -161,6 +161,7 @@ Thumbs.db
 .env.production
 secrets/
 credentials/
+config/*.local.json
 
 # Temporary files
 temp/

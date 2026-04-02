@@ -7,18 +7,86 @@ import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import pdfplumber
 
+from automation.config.parser_rules import get_parser_rule_section
+from automation.config.settings import settings
 from automation.domain.models import Invoice
 from automation.ports.document_parser import ParseResult
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_INVOICE_NUMBER_PATTERNS = [
+    r"(?:Invoice|Invoice\s*No\.?|Invoice\s*#|Inv\.?|Bill|Bill\s*#|Order|Order\s*#|Receipt)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]+)",
+    r"(?:Rechnung|Faktura|Factura)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]+)",
+]
+DEFAULT_DATE_PATTERNS = [
+    r"(?:Paid on|Date|Invoice Date|Order Date|Dated)\s*[:#]?\s*([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})",
+    r"(?:Date|Dated|Invoice Date|Order Date)\s*[:#]?\s*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})",
+    r"([0-9]{4}-[0-9]{2}-[0-9]{2})",
+]
+DEFAULT_AMOUNT_KEYWORDS = [
+    "total due",
+    "amount due",
+    "total amount",
+    "grand total",
+    "total",
+    "balance due",
+    "sum",
+]
+DEFAULT_CURRENCY_MAP = {
+    "€": "EUR",
+    "$": "USD",
+    "£": "GBP",
+    "¥": "JPY",
+    "₽": "RUB",
+}
+
 
 class ShopifyPdfInvoiceParser:
     """Parser for extracting Shopify invoice data from PDF files."""
+
+    def __init__(self):
+        rules = get_parser_rule_section("shopify_pdf")
+        self._invoice_number_patterns = self._resolve_list(
+            rules.get("invoice_number_patterns"), DEFAULT_INVOICE_NUMBER_PATTERNS
+        )
+        self._date_patterns = self._resolve_list(
+            rules.get("date_patterns"),
+            DEFAULT_DATE_PATTERNS,
+        )
+        self._amount_keywords = self._resolve_list(
+            rules.get("amount_keywords"),
+            DEFAULT_AMOUNT_KEYWORDS,
+        )
+        self._partner_contains_map = self._resolve_dict(rules.get("partner_contains_map"))
+        self._currency_map = {
+            **DEFAULT_CURRENCY_MAP,
+            **self._resolve_dict(rules.get("currency_map")),
+        }
+        self._default_partner_id = settings.parser_default_partner_id
+        self._default_currency = settings.parser_default_currency
+
+    @staticmethod
+    def _resolve_list(value: Any, defaults: list[str]) -> list[str]:
+        if not isinstance(value, list):
+            return defaults
+        parsed = [str(item).strip() for item in value if str(item).strip()]
+        return parsed if parsed else defaults
+
+    @staticmethod
+    def _resolve_dict(value: Any) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        parsed: dict[str, str] = {}
+        for key, item in value.items():
+            key_str = str(key).strip()
+            item_str = str(item).strip()
+            if key_str and item_str:
+                parsed[key_str] = item_str
+        return parsed
 
     def can_parse(self, file_path: Path) -> bool:
         """Check whether the parser can process the file."""
@@ -117,11 +185,11 @@ class ShopifyPdfInvoiceParser:
 
                     return (
                         Invoice(
-                            partner_id=invoice_data["partner_id"] or "unknown_partner",
+                            partner_id=invoice_data["partner_id"] or self._default_partner_id,
                             invoice_number=invoice_data["invoice_number"],
                             invoice_date=invoice_date,
                             amount=amount_decimal,
-                            currency=invoice_data["currency"] or "EUR",
+                            currency=invoice_data["currency"] or self._default_currency,
                             source_message_id=source_filename,
                         ),
                         invoice_data,
@@ -142,11 +210,7 @@ class ShopifyPdfInvoiceParser:
             return None, {}
 
     def _extract_invoice_number(self, text: str, filename: str, lines: list[str]) -> Optional[str]:
-        patterns = [
-            r"(?:Invoice|Invoice\s*No\.?|Invoice\s*#|Inv\.?|Bill|Bill\s*#|Order|Order\s*#|Receipt)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]+)",
-            r"(?:Rechnung|Faktura|Factura)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]+)",
-        ]
-        for pattern in patterns:
+        for pattern in self._invoice_number_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1).strip()
@@ -160,14 +224,7 @@ class ShopifyPdfInvoiceParser:
         return None
 
     def _extract_date(self, text: str, filename: str, lines: list[str]) -> Optional[str]:
-        patterns = [
-            r"(?:Paid on|Date|Invoice Date|Order Date|Dated)\s*[:#]?\s*"
-            r"([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})",
-            r"(?:Date|Dated|Invoice Date|Order Date)\s*[:#]?\s*"
-            r"([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})",
-            r"([0-9]{4}-[0-9]{2}-[0-9]{2})",
-        ]
-        for pattern in patterns:
+        for pattern in self._date_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1).strip()
@@ -183,18 +240,9 @@ class ShopifyPdfInvoiceParser:
     def _extract_amount_and_currency(
         self, text: str, lines: list[str]
     ) -> tuple[Optional[Decimal], Optional[str]]:
-        keywords = [
-            "total due",
-            "amount due",
-            "total amount",
-            "grand total",
-            "total",
-            "balance due",
-            "sum",
-        ]
         for i, line in enumerate(lines):
             lower = line.lower()
-            if any(k in lower for k in keywords):
+            if any(k in lower for k in self._amount_keywords):
                 amount, currency = self._parse_amount_from_line(line)
                 if amount is None and i + 1 < len(lines):
                     amount, currency = self._parse_amount_from_line(lines[i + 1])
@@ -260,16 +308,14 @@ class ShopifyPdfInvoiceParser:
 
     def _normalize_currency(self, token: str) -> str:
         token = token.strip()
-        symbols = {
-            "€": "EUR",
-            "$": "USD",
-            "£": "GBP",
-            "¥": "JPY",
-            "₽": "RUB",
-        }
-        return symbols.get(token, token.upper())
+        return self._currency_map.get(token, token.upper())
 
     def _extract_partner(self, text: str, filename: str) -> Optional[str]:
+        text_lower = text.lower()
+        for marker, partner_id in self._partner_contains_map.items():
+            if marker.lower() in text_lower:
+                return partner_id
+
         if "shopify" in text.lower():
             return "shopify"
 

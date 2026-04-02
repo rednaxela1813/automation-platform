@@ -1,0 +1,76 @@
+{
+  "shopify_pdf": {
+    "invoice_number_patterns": [
+      "(?:Invoice|Order)\\s*[:#]?\\s*([A-Z0-9][A-Z0-9\\-/]+)"
+    ],
+    "date_patterns": [
+      "(?:Date|Invoice Date)\\s*[:#]?\\s*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})"
+    ],
+    "amount_keywords": [
+      "total",
+      "amount due",
+      "grand total"
+    ],
+    "partner_contains_map": {
+      "shopify": "shopify"
+    },
+    "currency_map": {
+      "€": "EUR",
+      "$": "USD"
+    }
+  },
+  "pdf": {
+    "patterns": {
+      "invoice_number": [
+        "(?:Invoice|Bill|Inv)\\s*[#№:]?\\s*([A-Z0-9/-]+)"
+      ],
+      "amount": [
+        "(?:Total|Amount|Sum)[^0-9]*([0-9,]+\\.?[0-9]*)"
+      ],
+      "date": [
+        "(?:Date|Dated)[^0-9]*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})"
+      ],
+      "currency": [
+        "([A-Z]{3})\\s*[0-9,]+",
+        "([€$£¥₽])\\s*[0-9,]+"
+      ]
+    },
+    "partner_patterns": [
+      "(?:From|Seller|Vendor)[^\\n]*?([A-Za-z]+)"
+    ],
+    "currency_map": {
+      "€": "EUR",
+      "$": "USD"
+    }
+  },
+  "vub_camt053": {
+    "bank_markers": [
+      "camt.053",
+      "vseobecna uverova banka",
+      "subaskbx"
+    ],
+    "invoice_number_xpaths": [
+      "//*[local-name()='Stmt']/*[local-name()='Id']",
+      "//*[local-name()='GrpHdr']/*[local-name()='MsgId']"
+    ],
+    "date_xpaths": [
+      "//*[local-name()='Stmt']/*[local-name()='FrToDt']/*[local-name()='ToDtTm']",
+      "//*[local-name()='Stmt']/*[local-name()='CreDtTm']",
+      "//*[local-name()='GrpHdr']/*[local-name()='CreDtTm']"
+    ],
+    "amount_xpaths": [
+      "//*[local-name()='TxsSummry']/*[local-name()='TtlDbtNtries']/*[local-name()='Sum']",
+      "//*[local-name()='TxsSummry']/*[local-name()='TtlNtries']/*[local-name()='Sum']"
+    ],
+    "currency_xpaths": [
+      "//*[local-name()='Stmt']/*[local-name()='Acct']/*[local-name()='Ccy']",
+      "//*[local-name()='Bal']/*[local-name()='Amt']/@Ccy"
+    ],
+    "partner_xpaths": [
+      "//*[local-name()='Stmt']/*[local-name()='Acct']/*[local-name()='Svcr']//*[local-name()='Nm']",
+      "//*[local-name()='Stmt']/*[local-name()='Acct']/*[local-name()='Svcr']//*[local-name()='BIC']"
+    ],
+    "default_partner_id": "vub_bank_statement",
+    "default_currency": "EUR"
+  }
+}

@@ -6,11 +6,12 @@ import logging
 from pathlib import Path
 
 from automation.adapters.file_storage import LocalFileStorage
-from automation.adapters.parser_registry import ParserRegistry
+from automation.adapters.parser_registry import get_document_parsers
+
 from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
 from automation.app.use_cases import InvoiceParsingUseCase, InvoiceExportUseCase
-from automation.celery_app import celery
-from automation.config.settings import settings
+from automation.celery_app import celery_app as celery
+# from automation.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,10 @@ def retry_failed_invoices_task(self):
     try:
         # Initialize dependencies
         repository = SqliteProcessedInvoiceRepository(Path("emails.db"))
-        parser_registry = ParserRegistry()
+        
         file_storage = LocalFileStorage()
         
-        parsing_use_case = InvoiceParsingUseCase(parser_registry.get_parsers(), repository)
+        parsing_use_case = InvoiceParsingUseCase(get_document_parsers(), repository)
         export_use_case = InvoiceExportUseCase(repository)
 
         # Get items eligible for retry

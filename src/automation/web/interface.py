@@ -5,7 +5,8 @@ from __future__ import annotations
 import imaplib
 import json
 import logging
-from datetime import datetime, timedelta
+from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -177,6 +178,20 @@ def get_recent_quarantine_files(limit: int = 5) -> List[QuarantineFileInfo]:
     return files
 
 
+def get_log_tail(limit: int = 200) -> list[str]:
+    """Return the latest log lines from the application log file."""
+    log_file = Path(settings.log_dir) / "automation.log"
+    if not log_file.exists() or not log_file.is_file():
+        return []
+
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="replace") as fh:
+            return list(deque(fh, maxlen=limit))
+    except OSError as exc:
+        logger.exception("Failed to read log file %s: %s", log_file, exc)
+        return []
+
+
 @web_router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Render dashboard page."""
@@ -250,39 +265,13 @@ async def files_page(request: Request):
     )
 
 
-@web_router.get("/logs", response_class=HTMLResponse)
+@web_router.get("/logs", response_class=HTMLResponse, include_in_schema=False)
+@web_router.get("/loggs", response_class=HTMLResponse)
 async def logs_page(request: Request):
-    """Render logs page with sample log records."""
-    now = datetime.now()
-    logs = [
-        {
-            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "level": "INFO",
-            "message": "Email processing completed: 4 messages processed",
-        },
-        {
-            "timestamp": (now - timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S"),
-            "level": "SUCCESS",
-            "message": "PDF file extracted: Novaglen_481474921.pdf (53KB)",
-        },
-        {
-            "timestamp": (now - timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S"),
-            "level": "SUCCESS",
-            "message": "PDF file extracted: Eyelashes_and_Beauty_481483348.pdf (52KB)",
-        },
-        {
-            "timestamp": (now - timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
-            "level": "INFO",
-            "message": "IMAP connection established to mail.deilmann.sk",
-        },
-    ]
-
-    log_stats = {
-        "ERROR": sum(1 for log in logs if log.get("level") == "ERROR"),
-        "WARNING": sum(1 for log in logs if log.get("level") == "WARNING"),
-        "SUCCESS": sum(1 for log in logs if log.get("level") == "SUCCESS"),
-        "INFO": sum(1 for log in logs if log.get("level") == "INFO"),
-    }
+    """Render current application logs from log file."""
+    max_lines = 200
+    log_file_path = Path(settings.log_dir) / "automation.log"
+    log_lines = get_log_tail(limit=max_lines)
 
     return templates.TemplateResponse(
         "logs.html",
@@ -290,8 +279,9 @@ async def logs_page(request: Request):
             "request": request,
             "title": "System Logs",
             "current_page": "logs",
-            "logs": logs,
-            "log_stats": log_stats,
+            "log_file_path": str(log_file_path),
+            "max_lines": max_lines,
+            "log_lines": log_lines,
         },
     )
 

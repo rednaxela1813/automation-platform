@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     retry_backoff_minutes: int = 15  # Exponential backoff base
     failed_retry_after_hours: int = 24  # Retry failed items after N hours
 
+    # Parser tuning (do not store real data in git)
+    parser_rules_enabled: bool = True
+    parser_rules_file: str = "./config/parser_rules.local.json"
+    parser_default_currency: str = "EUR"
+    parser_default_partner_id: str = "unknown_partner"
+
     # Config for loading .env file
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False

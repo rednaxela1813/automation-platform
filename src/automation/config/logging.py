@@ -80,7 +80,7 @@ def get_logger(name: str = "automation") -> logging.Logger:
 
 def configure_logging() -> logging.Logger:
     """Configure logging using application settings."""
-    log_file = Path(settings.log_dir) / "automation.log" if not settings.debug else None
+    log_file = Path(settings.log_dir) / "automation.log"
     return setup_logging(
         log_level="DEBUG" if settings.debug else "INFO",
         log_file=log_file,

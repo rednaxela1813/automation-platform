@@ -6,6 +6,7 @@ from automation.adapters.excel_parser import ExcelInvoiceParser
 from automation.adapters.metro_xml_parser import MetroXmlInvoiceParser
 from automation.adapters.pdf_parser import PdfInvoiceParser
 from automation.adapters.shopify_pdf_parser import ShopifyPdfInvoiceParser
+from automation.adapters.vub_camt053_parser import VubCamt053Parser
 from automation.ports.document_parser import DocumentParser
 
 
@@ -14,6 +15,7 @@ def get_document_parsers() -> list[DocumentParser]:
     return [
         ShopifyPdfInvoiceParser(),
         PdfInvoiceParser(),
+        VubCamt053Parser(),
         ExcelInvoiceParser(),
         MetroXmlInvoiceParser(),
     ]
