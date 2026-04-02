@@ -1,10 +1,11 @@
+# automation-platform/src/automation/adapters/pdf_parser.py
 """Base adapter for parsing PDF documents."""
 
 from __future__ import annotations
 
 import re
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,26 +18,75 @@ from automation.ports.document_parser import ParseResult
 
 DEFAULT_PATTERNS = {
     "invoice_number": [
-        r"(?:Invoice|Bill|Inv)\s*[#№:]?\s*([A-Z0-9/-]+)",
+        r"(?:Invoice\s*(?:No\.?|Number|#|№|n°)?|Facture\s*n°|Rechnung(?:snr\.?|snummer)?|Factuur(?:nummer)?|Receipt\s*(?:No\.?)?|Booking\s*ID)\s*[:#]?\s*([A-Z0-9#][A-Z0-9/_\-]+)",
+        r"(?:Invoice|Bill|Inv|INV)\s*[#№:/]?\s*([A-Z0-9][A-Z0-9/_\-]+)",
     ],
     "amount": [
-        r"(?:Total|Amount|Sum)[^0-9]*([0-9,]+\\.?[0-9]*)",
+        r"(?:TOTAL AMOUNT DUE ON[^$€£₹Rs\d]*|Balance Due[:\s]*|Grand Total[:\s]*|Factuur totaal\s*(?:EUR)?\s*|Total TTC\s*[:\s]*)[$€£₹]?\s*(?:Rs\.?)?\s*([0-9]+[.,][0-9]+(?:[.,][0-9]+)?)",
+        r"(?:Total|Amount|Sum|Bedrag|Montant|Totaal|Gesamtbetrag)[^0-9]{0,40}[$€£₹]?\s*(?:Rs\.?)?\s*([0-9]+[.,][0-9]{2})",
+        r"[$€£₹]\s*([0-9]+[.,][0-9]{2})",
     ],
     "date": [
-        r"(?:Date|Dated)[^0-9]*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})",
+        r"(?:Invoice Date|Date|Dated|Rechnungsdatum|Factuurdatum|Factuurdatum)\s*[:#]?\s*([A-Za-z]+\s+\d{1,2}\s*,?\s*\d{4})",
+        r"(?:Invoice Date|Date|Dated|Rechnungsdatum|Factuurdatum|Order Date)\s*[:#]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})",
+        r"\b(\d{1,2}[./-]\d{1,2}[./-]\d{4})\b",
     ],
     "currency": [
-        r"([A-Z]{3})\\s*[0-9,]+",
-        r"([€$£¥₽])\\s*[0-9,]+",
+        r"\b(EUR|USD|GBP|INR|CHF|PLN|CZK|HUF|DKK|NOK|SEK)\b",
+        r"([€$£₹])\s*[0-9]",
+        r"[0-9]\s*([€$£₹])",
     ],
 }
+
 DEFAULT_CURRENCY_MAP = {
     "€": "EUR",
     "$": "USD",
     "£": "GBP",
     "¥": "JPY",
     "₽": "RUB",
+    "₹": "INR",
+    "Rs": "INR",
 }
+
+
+def normalize_amount(amount_str: str) -> Decimal:
+    """
+    Normalize amount string to Decimal handling both European and US formats.
+
+    Examples:
+        "1.234,56" -> Decimal("1234.56")  (European)
+        "1,234.56" -> Decimal("1234.56")  (US)
+        "1234.56"  -> Decimal("1234.56")
+        "1234,56"  -> Decimal("1234.56")  (European no thousands)
+        "1939"     -> Decimal("1939")
+    """
+    s = amount_str.strip().replace(" ", "")
+
+    has_dot = "." in s
+    has_comma = "," in s
+
+    if has_dot and has_comma:
+        # Both separators present — determine which is decimal
+        last_dot = s.rfind(".")
+        last_comma = s.rfind(",")
+        if last_comma > last_dot:
+            # European: 1.234,56
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            # US: 1,234.56
+            s = s.replace(",", "")
+    elif has_comma:
+        # Only comma — could be European decimal (49,99) or thousands (1,234)
+        parts = s.split(",")
+        if len(parts) == 2 and len(parts[1]) == 2:
+            # Looks like decimal separator: 49,99
+            s = s.replace(",", ".")
+        else:
+            # Thousands separator: 1,234
+            s = s.replace(",", "")
+    # Only dot or no separator — already fine
+
+    return Decimal(s)
 
 
 class PdfInvoiceParser:
@@ -113,7 +163,7 @@ class PdfInvoiceParser:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
-                    text_content += page_text + "\\n"
+                    text_content += page_text + "\n"
 
         return text_content
 
@@ -121,7 +171,6 @@ class PdfInvoiceParser:
         """Extract structured invoice data from text."""
         extracted_data = {}
 
-        # Extract each field
         for field, field_patterns in self._patterns.items():
             for pattern in field_patterns:
                 match = re.search(pattern, text, re.IGNORECASE)
@@ -129,15 +178,12 @@ class PdfInvoiceParser:
                     extracted_data[field] = match.group(1).strip()
                     break
 
-        # Validate and build Invoice object
         if self._validate_extracted_data(extracted_data):
             try:
-                # Normalize amount and date values
-                amount_str = extracted_data["amount"].replace(",", "")
-                amount = Decimal(amount_str)
+                amount = normalize_amount(extracted_data["amount"])
 
-                date_str = extracted_data["date"]
-                invoice_date = self._parse_date(date_str)
+                date_str = extracted_data.get("date", "")
+                invoice_date = self._parse_date(date_str) if date_str else datetime.now().date()
 
                 return Invoice(
                     partner_id=self._extract_partner_id(text),
@@ -147,11 +193,10 @@ class PdfInvoiceParser:
                     currency=self._normalize_currency(
                         extracted_data.get("currency", self._default_currency)
                     ),
-                    source_message_id=source_filename,  # Temporary fallback: use file name
+                    source_message_id=source_filename,
                 )
 
-            except (ValueError, TypeError):
-                # Parsing errors are intentionally swallowed here
+            except (ValueError, TypeError, InvalidOperation) as e:
                 return None
 
         return None
@@ -163,15 +208,18 @@ class PdfInvoiceParser:
 
     def _parse_date(self, date_str: str):
         """Parse date from multiple formats."""
-        date_formats = ["%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"]
+        date_formats = [
+            "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d",
+            "%B %d , %Y", "%B %d, %Y", "%b %d, %Y", "%b %d , %Y",
+            "%d %B %Y", "%d %b %Y",
+        ]
 
         for fmt in date_formats:
             try:
-                return datetime.strptime(date_str, fmt).date()
+                return datetime.strptime(date_str.strip(), fmt).date()
             except ValueError:
                 continue
 
-        # Fallback to current date if parsing fails
         return datetime.now().date()
 
     def _extract_partner_id(self, text: str) -> str:
