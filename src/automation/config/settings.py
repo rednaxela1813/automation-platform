@@ -87,7 +87,10 @@ class Settings(BaseSettings):
 
     # Config for loading .env file
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
     )
 
     def resolved_cors_allowed_origins(self) -> list[str]:

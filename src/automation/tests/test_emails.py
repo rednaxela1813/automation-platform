@@ -1,49 +1,35 @@
-#!/usr/bin/env python3
-"""Simple email test"""
-import sys
+from __future__ import annotations
+
+import email
 import os
-sys.path.insert(0, 'src')
 
 import imaplib
+import pytest
+
 from automation.config.settings import settings
 
-print('🔍 Checking ALL emails in mailbox...')
 
-try:
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.getenv("RUN_IMAP_TESTS") != "1",
+        reason="Manual mailbox diagnostic. Set RUN_IMAP_TESTS=1 to enable.",
+    ),
+]
+
+
+def test_recent_emails_have_accessible_payloads():
     with imaplib.IMAP4_SSL(settings.imap_host) as imap:
         imap.login(settings.imap_user, settings.imap_password)
         imap.select(settings.imap_mailbox)
-        
-        # Searching ALL emails
-        status, data = imap.search(None, 'ALL')
-        message_ids = data[0].split() if status == 'OK' else []
-        print(f'📧 Total emails: {len(message_ids)}')
-        
-        # Searching unread
-        status2, data2 = imap.search(None, 'UNSEEN')  
-        unseen_ids = data2[0].split() if status2 == 'OK' else []
-        print(f'📩 Unread: {len(unseen_ids)}')
-        
-        # Checking last 2 emails for attachments
-        for i, msg_id in enumerate(message_ids[-2:]):
-            status, msg_data = imap.fetch(msg_id, '(RFC822)')
-            if status == 'OK':
-                import email
-                raw = msg_data[0][1]
-                msg = email.message_from_bytes(raw)
-                
-                subject = msg.get('Subject', 'No Subject')
-                print(f'\n--- Email {i+1} ---')
-                print(f'Subject: {subject[:50]}')
-                
-                # Looking for attachments
-                attachments = []
-                if msg.is_multipart():
-                    for part in msg.walk():
-                        if part.get('Content-Disposition') and part.get_filename():
-                            attachments.append(part.get_filename())
-                
-                print(f'Attachments ({len(attachments)}): {attachments}')
 
-except Exception as e:
-    print(f'❌ Error: {e}')
+        status, data = imap.search(None, "ALL")
+        assert status == "OK"
+        message_ids = data[0].split() if data and data[0] else []
+
+        for msg_id in message_ids[-2:]:
+            fetch_status, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
+            assert fetch_status == "OK"
+            raw = msg_data[0][1]
+            msg = email.message_from_bytes(raw)
+            assert msg.get("Subject") is not None

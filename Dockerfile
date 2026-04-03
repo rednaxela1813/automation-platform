@@ -1,6 +1,7 @@
 # Dockerfile for Email Automation Platform
 FROM python:3.13-slim AS base
 
+ARG INSTALL_DEV=false
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,7 +19,11 @@ COPY run.py ./
 COPY templates/ templates/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -e .
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+        pip install --no-cache-dir -e ".[dev]"; \
+    else \
+        pip install --no-cache-dir -e .; \
+    fi
 
 # Create storage directories
 RUN mkdir -p storage/safe storage/quarantine logs

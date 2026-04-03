@@ -1,36 +1,28 @@
-#!/usr/bin/env python3
-"""Attachment extraction test"""
-import sys
+from __future__ import annotations
+
 import os
-sys.path.insert(0, 'src')
+
+import pytest
 
 from automation.adapters.email_imap import ImapEmailClient
 
-print('🧪 ATTACHMENT EXTRACTION TEST')
-print('=' * 50)
 
-try:
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.getenv("RUN_IMAP_TESTS") != "1",
+        reason="Manual attachment diagnostic. Set RUN_IMAP_TESTS=1 to enable.",
+    ),
+]
+
+
+def test_recent_messages_expose_attachment_metadata():
     client = ImapEmailClient()
-    messages = client.fetch_unseen_messages()  # Now searching ALL
-    
-    print(f'📧 Messages found: {len(messages)}')
-    
-    for i, msg in enumerate(messages):
-        print(f'\n--- MESSAGE {i+1} ---')
-        print(f'Subject: {msg.subject[:50]}...')
-        print(f'Attachments detected by system: {len(msg.attachments)}')
-        
-        for j, att in enumerate(msg.attachments):
-            print(f'  Attachment {j+1}:')
-            print(f'    Name: {att.filename}')
-            print(f'    Type: {att.content_type}')
-            print(f'    Size: {att.size} bytes')
-            
-            # Special attention to PDF
-            if att.filename.lower().endswith('.pdf'):
-                print(f'    🎯 THIS IS A PDF FILE!')
+    messages = client.fetch_new_messages(force_reprocess=True)
 
-except Exception as e:
-    print(f'❌ Error: {e}')
-    import traceback
-    traceback.print_exc()
+    assert isinstance(messages, list)
+    for message in messages[:3]:
+        for attachment in message.attachments:
+            assert attachment.filename
+            assert attachment.content_type is not None
+            assert attachment.size >= 0
