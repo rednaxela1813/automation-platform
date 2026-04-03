@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     log_dir: str = "./logs"
 
     # Database
-    database_url: str = "sqlite:///emails.db"
+    database_url: str = "postgresql://automation:automation_secure_password@localhost:5432/automation"
     redis_url: str = "redis://localhost:6379/0"
 
     # API settings
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     archive_days_old: int = 90
 
     # Security
-    allowed_file_extensions: list[str] = [".pdf", ".xlsx", ".docx", ".xml"]
+    allowed_file_extensions: list[str] = [".pdf", ".xlsx", ".docx", ".xml", ".csv"]
     allowed_mime_types: list[str] = [
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

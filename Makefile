@@ -90,26 +90,30 @@ docker-build: ## Build Docker image
 	docker build -t automation-platform:latest .
 
 docker-up: ## Start all services via Docker Compose
-	docker-compose up -d
+	docker compose up -d --build
 
 docker-down: ## Stop all Docker Compose services
-	docker-compose down
+	docker compose down
 
 docker-logs: ## Show Docker container logs
-	docker-compose logs -f
+	docker compose logs -f
 
 docker-shell: ## Open shell in main container
-	docker-compose exec automation-platform bash
+	docker compose exec automation-platform bash
 
 # Database
-db-init: ## Initialize database
-	$(PYTHON) -c "from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository; from pathlib import Path; SqliteProcessedInvoiceRepository(Path('automation.db'))"
+db-upgrade: ## Apply Alembic migrations
+	alembic upgrade head
+
+db-revision: ## Create Alembic revision (usage: make db-revision MSG="add table")
+	alembic revision --autogenerate -m "$(MSG)"
 
 db-reset: ## Reset database (CAUTION!)
 	@echo "⚠️  This will delete the entire database!"
 	@read -p "Continue? (y/N): " confirm && [ "$$confirm" = "y" ]
-	rm -f automation.db
-	$(MAKE) db-init
+	docker compose down -v
+	docker compose up -d database redis
+	$(MAKE) db-upgrade
 
 # Monitoring and debugging
 logs: ## Show application logs
@@ -145,7 +149,6 @@ backup: ## Create data backup
 	@echo "📦 Creating backup..."
 	mkdir -p backups
 	cp -r storage/ backups/storage_$(shell date +%Y%m%d_%H%M%S)
-	cp automation.db backups/automation_$(shell date +%Y%m%d_%H%M%S).db
 	@echo "✅ Backup created in backups/"
 
 security-check: ## Check dependency security

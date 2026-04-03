@@ -24,7 +24,11 @@ class ProcessingResult:
     messages_processed: int
     invoices_found: int
     invoices_uploaded: int
+    files_processed: int
     files_quarantined: int
+    emails_without_attachments: int
+    emails_marked_processed: int
+    parser_failures: int
     errors: List[str]
 
 
@@ -118,7 +122,11 @@ class InvoiceParsingUseCase:
             messages_processed=0,  # Not applicable for this phase
             invoices_found=0,
             invoices_uploaded=0,
+            files_processed=0,
             files_quarantined=0,
+            emails_without_attachments=0,
+            emails_marked_processed=0,
+            parser_failures=0,
             errors=[],
         )
 
@@ -199,7 +207,11 @@ class InvoiceExportUseCase:
             messages_processed=0,
             invoices_found=0,
             invoices_uploaded=0,
+            files_processed=0,
             files_quarantined=0,
+            emails_without_attachments=0,
+            emails_marked_processed=0,
+            parser_failures=0,
             errors=[],
         )
 
@@ -260,52 +272,97 @@ class EmailProcessingUseCase:
         self._parsing = InvoiceParsingUseCase(document_parser, repository)
         self._export = InvoiceExportUseCase(repository)
 
-    def process_new_emails(self, dry_run: bool = False) -> ProcessingResult:
+    def process_new_emails(
+        self,
+        dry_run: bool = False,
+        force_reprocess: bool = False,
+    ) -> ProcessingResult:
         """Unified processing for backward compatibility."""
         result = ProcessingResult(
             messages_processed=0,
             invoices_found=0,
             invoices_uploaded=0,
+            files_processed=0,
             files_quarantined=0,
+            emails_without_attachments=0,
+            emails_marked_processed=0,
+            parser_failures=0,
             errors=[],
         )
 
-        messages = self._email_processor.fetch_new_messages()
+        messages = self._email_processor.fetch_new_messages(force_reprocess=force_reprocess)
         result.messages_processed = len(messages)
 
         for message in messages:
-            for attachment in message.attachments:
-                try:
-                    storage_result, file_path = self._file_storage.store_attachment(attachment)
-                except Exception as exc:
-                    result.errors.append(str(exc))
+            try:
+                if not message.attachments:
+                    result.emails_without_attachments += 1
                     continue
 
-                if storage_result == FileStorageResult.QUARANTINE:
-                    result.files_quarantined += 1
-                    continue
+                message_had_safe_file = False
+                message_had_result = False
+                message_had_errors = False
 
-                if storage_result == FileStorageResult.REJECTED:
-                    result.errors.append(f"File rejected: {attachment.filename}")
-                    continue
+                for attachment in message.attachments:
+                    try:
+                        storage_result, file_path = self._file_storage.store_attachment(attachment)
+                    except Exception as exc:
+                        result.errors.append(str(exc))
+                        message_had_errors = True
+                        continue
 
-                parsed_invoice = self._parse_invoice_with_compatible_parser(Path(file_path))
-                if not parsed_invoice:
-                    continue
+                    if storage_result == FileStorageResult.QUARANTINE:
+                        result.files_quarantined += 1
+                        continue
 
-                result.invoices_found += 1
-                if self._repository.claim(parsed_invoice.invoice_key):
-                    result.invoices_uploaded += 1
-                    if not dry_run:
-                        self._repository.mark_done(parsed_invoice.invoice_key)
+                    if storage_result == FileStorageResult.REJECTED:
+                        result.errors.append(f"File rejected: {attachment.filename}")
+                        message_had_errors = True
+                        continue
 
-            if not dry_run:
-                try:
-                    self._email_processor.mark_as_processed(message.message_id)
-                except Exception as exc:
-                    result.errors.append(
-                        f"Failed to mark message as processed: {message.message_id}: {exc}"
-                    )
+                    message_had_safe_file = True
+                    result.files_processed += 1
+                    parsed_invoice = self._parse_invoice_with_compatible_parser(Path(file_path))
+                    if not parsed_invoice:
+                        result.parser_failures += 1
+                        continue
+
+                    message_had_result = True
+                    result.invoices_found += 1
+                    try:
+                        claimed = self._repository.claim(parsed_invoice.invoice_key)
+                    except Exception as exc:
+                        result.errors.append(
+                            f"Failed to persist invoice {parsed_invoice.invoice_key}: {exc}"
+                        )
+                        message_had_errors = True
+                        continue
+
+                    if claimed:
+                        result.invoices_uploaded += 1
+                        if not dry_run:
+                            try:
+                                self._repository.mark_done(parsed_invoice.invoice_key)
+                            except Exception as exc:
+                                result.errors.append(
+                                    f"Failed to finalize invoice {parsed_invoice.invoice_key}: {exc}"
+                                )
+                                message_had_errors = True
+
+                if not dry_run and not message_had_errors and (message_had_safe_file or message_had_result):
+                    try:
+                        if self._email_processor.mark_as_processed(message.message_id):
+                            result.emails_marked_processed += 1
+                        else:
+                            result.errors.append(
+                                f"Failed to mark message as processed: {message.message_id}"
+                            )
+                    except Exception as exc:
+                        result.errors.append(
+                            f"Failed to mark message as processed: {message.message_id}: {exc}"
+                        )
+            except Exception as exc:
+                result.errors.append(f"Error processing message {message.message_id}: {exc}")
 
         return result
 

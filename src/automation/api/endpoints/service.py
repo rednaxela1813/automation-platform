@@ -6,10 +6,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, Response, status
 from pydantic import BaseModel
+from sqlalchemy import text
 from redis import Redis
 from redis.exceptions import RedisError
 
 from automation.config.settings import settings
+from automation.db.session import create_engine_from_settings
 
 router = APIRouter(tags=["service"])
 
@@ -52,23 +54,32 @@ def _check_storage_ready() -> ReadinessDependency:
         return ReadinessDependency(status="fail", details=str(exc))
 
 
-def _check_sqlite_ready() -> ReadinessDependency:
+def _check_database_ready() -> ReadinessDependency:
     database_url = settings.database_url
-    if not database_url.startswith("sqlite:///"):
-        return ReadinessDependency(status="skip", details="Non-SQLite database URL")
+    if database_url.startswith("sqlite:///"):
+        db_path = Path(database_url.replace("sqlite:///", ""))
+        try:
+            parent = db_path.parent if db_path.parent != Path("") else Path(".")
+            parent.mkdir(parents=True, exist_ok=True)
+            if not parent.is_dir():
+                return ReadinessDependency(
+                    status="fail",
+                    details=f"DB parent is not a directory: {parent}",
+                )
+            return ReadinessDependency(status="ok")
+        except OSError as exc:
+            return ReadinessDependency(status="fail", details=str(exc))
 
-    db_path = Path(database_url.replace("sqlite:///", ""))
-    try:
-        parent = db_path.parent if db_path.parent != Path("") else Path(".")
-        parent.mkdir(parents=True, exist_ok=True)
-        if not parent.is_dir():
-            return ReadinessDependency(
-                status="fail",
-                details=f"DB parent is not a directory: {parent}",
-            )
-        return ReadinessDependency(status="ok")
-    except OSError as exc:
-        return ReadinessDependency(status="fail", details=str(exc))
+    if database_url.startswith(("postgresql://", "postgres://")):
+        try:
+            engine = create_engine_from_settings(database_url)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return ReadinessDependency(status="ok")
+        except Exception as exc:
+            return ReadinessDependency(status="fail", details=str(exc))
+
+    return ReadinessDependency(status="fail", details="Unsupported DATABASE_URL scheme")
 
 
 def _check_redis_ready() -> ReadinessDependency:
@@ -118,7 +129,7 @@ async def health_compat() -> HealthLiveResponse:
 async def health_ready(response: Response) -> HealthReadyResponse:
     checks = {
         "storage": _check_storage_ready(),
-        "sqlite": _check_sqlite_ready(),
+        "database": _check_database_ready(),
         "redis": _check_redis_ready(),
     }
     overall_ok = all(item.status in {"ok", "skip"} for item in checks.values())

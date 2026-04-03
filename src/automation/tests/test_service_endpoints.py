@@ -41,7 +41,7 @@ def test_health_live_and_compat_endpoint():
 
 def test_health_ready_returns_200_when_all_checks_pass(monkeypatch):
     monkeypatch.setattr(service, "_check_storage_ready", lambda: ReadinessDependency(status="ok"))
-    monkeypatch.setattr(service, "_check_sqlite_ready", lambda: ReadinessDependency(status="ok"))
+    monkeypatch.setattr(service, "_check_database_ready", lambda: ReadinessDependency(status="ok"))
     monkeypatch.setattr(service, "_check_redis_ready", lambda: ReadinessDependency(status="ok"))
 
     client = _build_client()
@@ -53,7 +53,7 @@ def test_health_ready_returns_200_when_all_checks_pass(monkeypatch):
 
 def test_health_ready_returns_503_when_any_check_fails(monkeypatch):
     monkeypatch.setattr(service, "_check_storage_ready", lambda: ReadinessDependency(status="ok"))
-    monkeypatch.setattr(service, "_check_sqlite_ready", lambda: ReadinessDependency(status="ok"))
+    monkeypatch.setattr(service, "_check_database_ready", lambda: ReadinessDependency(status="ok"))
     monkeypatch.setattr(
         service,
         "_check_redis_ready",

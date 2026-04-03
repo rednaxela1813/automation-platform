@@ -160,16 +160,10 @@
           </div>
         </div>
 
-        {% if last_processing %}
+        {% if stats.last_processing_time %}
         <div class="alert alert-info mt-3">
           <i class="fas fa-info-circle me-2"></i>
-          <strong>Last processing:</strong> {{ last_processing.processed_at
-          }} <br />
-          <small>
-            Emails: {{ last_processing.emails_processed }}, Files: {{
-            last_processing.files_processed }}, Quarantined: {{
-            last_processing.files_quarantined }}
-          </small>
+          <strong>Last processing activity:</strong> {{ stats.last_processing_time }}
         </div>
         {% endif %}
       </div>

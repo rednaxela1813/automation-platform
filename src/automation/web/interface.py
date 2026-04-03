@@ -207,12 +207,13 @@ async def dashboard(request: Request):
     quarantine_files = get_recent_quarantine_files(5)
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
-        {
+        context={
             "request": request,
             "title": "Dashboard",
             "current_page": "dashboard",
-            "stats": stats.dict(),
+            "stats": stats.model_dump(),
             "config": config,
             "recent_files": recent_files,
             "quarantine_files": quarantine_files,
@@ -237,8 +238,9 @@ async def settings_page(request: Request):
     }
 
     return templates.TemplateResponse(
+        request,
         "settings.html",
-        {
+        context={
             "request": request,
             "title": "Settings",
             "current_page": "settings",
@@ -254,8 +256,9 @@ async def files_page(request: Request):
     pdf_count = sum(1 for f in all_files if f.filename.lower().endswith(".pdf"))
 
     return templates.TemplateResponse(
+        request,
         "files.html",
-        {
+        context={
             "request": request,
             "title": "Files",
             "current_page": "files",
@@ -274,8 +277,9 @@ async def logs_page(request: Request):
     log_lines = get_log_tail(limit=max_lines)
 
     return templates.TemplateResponse(
+        request,
         "logs.html",
-        {
+        context={
             "request": request,
             "title": "System Logs",
             "current_page": "logs",
@@ -290,7 +294,7 @@ async def logs_page(request: Request):
 @web_router.get("/api/web/stats")
 async def web_stats():
     """Return dashboard statistics as JSON."""
-    return get_web_stats().dict()
+    return get_web_stats().model_dump()
 
 
 @web_router.post("/api/web/test-connection")

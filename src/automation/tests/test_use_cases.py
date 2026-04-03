@@ -225,6 +225,73 @@ class TestEmailProcessingUseCase:
         assert "Storage error" in result.errors[0]
         assert result.invoices_uploaded == 0
 
+    def test_process_new_emails_continues_after_repository_error(
+        self, mock_dependencies, sample_email_message, sample_invoice
+    ):
+        """One broken message must not abort the whole batch."""
+
+        second_message = EmailMessage(
+            message_id="test-msg-2",
+            subject="Second invoice",
+            sender="supplier@example.com",
+            received_date="2024-02-20T10:05:00Z",
+            body="Please find attached invoice",
+            attachments=sample_email_message.attachments,
+        )
+
+        use_case = EmailProcessingUseCase(**mock_dependencies)
+        mock_dependencies["email_processor"].fetch_new_messages.return_value = [
+            sample_email_message,
+            second_message,
+        ]
+        mock_dependencies["file_storage"].store_attachment.return_value = (
+            FileStorageResult.SAFE_STORAGE,
+            "/path/to/file.pdf",
+        )
+
+        parse_result = Mock()
+        parse_result.success = True
+        parse_result.invoice = sample_invoice
+        mock_dependencies["document_parser"].parse_invoice.return_value = parse_result
+        mock_dependencies["repository"].claim.side_effect = [
+            Exception("db failed"),
+            True,
+        ]
+
+        result = use_case.process_new_emails()
+
+        assert result.messages_processed == 2
+        assert result.invoices_found == 2
+        assert result.invoices_uploaded == 1
+        assert any("Failed to persist invoice" in error for error in result.errors)
+        mock_dependencies["email_processor"].mark_as_processed.assert_called_once_with("test-msg-2")
+
+    def test_process_new_emails_does_not_mark_message_processed_on_repository_error(
+        self, mock_dependencies, sample_email_message, sample_invoice
+    ):
+        """A failed message should remain unread/unprocessed for retry."""
+
+        use_case = EmailProcessingUseCase(**mock_dependencies)
+        mock_dependencies["email_processor"].fetch_new_messages.return_value = [
+            sample_email_message
+        ]
+        mock_dependencies["file_storage"].store_attachment.return_value = (
+            FileStorageResult.SAFE_STORAGE,
+            "/path/to/file.pdf",
+        )
+
+        parse_result = Mock()
+        parse_result.success = True
+        parse_result.invoice = sample_invoice
+        mock_dependencies["document_parser"].parse_invoice.return_value = parse_result
+        mock_dependencies["repository"].claim.side_effect = Exception("db failed")
+
+        result = use_case.process_new_emails()
+
+        assert result.invoices_uploaded == 0
+        assert any("Failed to persist invoice" in error for error in result.errors)
+        mock_dependencies["email_processor"].mark_as_processed.assert_not_called()
+
 
 @pytest.mark.integration
 class TestEmailProcessingIntegration:

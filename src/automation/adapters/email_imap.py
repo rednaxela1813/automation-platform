@@ -17,19 +17,21 @@ class ImapEmailClient:
         self.password = settings.imap_password
         self.mailbox = settings.imap_mailbox
 
-    def fetch_new_messages(self) -> List[EmailMessage]:
+    def fetch_new_messages(self, force_reprocess: bool = False) -> List[EmailMessage]:
         """Fetch unseen IMAP messages and convert them to EmailMessage objects."""
         with imaplib.IMAP4_SSL(self.host) as imap:
             imap.login(self.username, self.password)
             imap.select(self.mailbox)
 
-            status, data = imap.search(None, "UNSEEN")
+            search_criteria = "ALL" if force_reprocess else "UNSEEN"
+            status, data = imap.search(None, search_criteria)
             if status != "OK":
                 return []
 
             messages = []
             for msg_id in data[0].split():
-                status, msg_data = imap.fetch(msg_id, "(RFC822)")
+                # BODY.PEEK avoids setting the \Seen flag while reading the message.
+                status, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
                 if status != "OK" or not msg_data or not msg_data[0]:
                     continue
 
@@ -44,7 +46,7 @@ class ImapEmailClient:
             return messages
 
     def mark_as_processed(self, message_id: str) -> bool:
-        """Mark message as read (\Seen)."""
+        """Mark message as read (\\Seen)."""
         try:
             with imaplib.IMAP4_SSL(self.host) as imap:
                 imap.login(self.username, self.password)
@@ -55,8 +57,8 @@ class ImapEmailClient:
             return False
 
     # Backward-compatible alias (can be removed after full codebase update)
-    def fetch_unseen_messages(self) -> List[EmailMessage]:
-        return self.fetch_new_messages()
+    def fetch_unseen_messages(self, force_reprocess: bool = False) -> List[EmailMessage]:
+        return self.fetch_new_messages(force_reprocess=force_reprocess)
 
     def _convert_to_email_message(self, msg: Message, msg_id: str) -> EmailMessage:
         """Convert email.message.Message to EmailMessage domain object."""

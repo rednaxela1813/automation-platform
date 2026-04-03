@@ -7,13 +7,12 @@ Background tasks for email processing
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Any, Dict
 
 from automation.adapters.email_imap import ImapEmailClient
 from automation.adapters.file_storage import LocalFileStorage
 from automation.adapters.parser_registry import get_document_parsers
-from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
+from automation.adapters.repository_factory import create_processed_invoice_repository
 from automation.app.use_cases import EmailProcessingUseCase
 from automation.celery_app import celery_app
 from automation.config.settings import settings
@@ -31,10 +30,7 @@ def process_new_emails_task(self) -> Dict[str, Any]:
 
         # Initialize dependencies
         email_processor = ImapEmailClient()
-        db_path = settings.database_url
-        if db_path.startswith("sqlite:///"):
-            db_path = db_path.replace("sqlite:///", "")
-        repository = SqliteProcessedInvoiceRepository(Path(db_path))
+        repository = create_processed_invoice_repository(settings.database_url)
         document_parser = get_document_parsers()
         file_storage = LocalFileStorage()
 
@@ -50,17 +46,29 @@ def process_new_emails_task(self) -> Dict[str, Any]:
         result = use_case.process_new_emails()
 
         logger.info(
-            f"Email processing completed: {result.messages_processed} messages, "
-            f"{result.invoices_found} invoices found, "
-            f"{result.invoices_uploaded} uploaded"
+            "Email processing completed: %s messages, %s files stored, %s invoices found, "
+            "%s uploaded, %s quarantined, %s parser failures, %s emails without attachments, "
+            "%s emails marked as processed",
+            result.messages_processed,
+            result.files_processed,
+            result.invoices_found,
+            result.invoices_uploaded,
+            result.files_quarantined,
+            result.parser_failures,
+            result.emails_without_attachments,
+            result.emails_marked_processed,
         )
 
         return {
             "status": "success",
             "messages_processed": result.messages_processed,
+            "files_processed": result.files_processed,
             "invoices_found": result.invoices_found,
             "invoices_uploaded": result.invoices_uploaded,
             "files_quarantined": result.files_quarantined,
+            "emails_without_attachments": result.emails_without_attachments,
+            "emails_marked_processed": result.emails_marked_processed,
+            "parser_failures": result.parser_failures,
             "errors": result.errors[:10],  # Limit number of errors in response
         }
 

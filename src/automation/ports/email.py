@@ -37,7 +37,7 @@ class EmailMessage:
 class EmailProcessor(Protocol):
     """Email processing interface."""
 
-    def fetch_new_messages(self) -> List[EmailMessage]:
+    def fetch_new_messages(self, force_reprocess: bool = False) -> List[EmailMessage]:
         """Fetch new messages from a mailbox."""
         ...
 

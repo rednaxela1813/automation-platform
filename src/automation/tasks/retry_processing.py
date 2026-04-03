@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from automation.adapters.file_storage import LocalFileStorage
 from automation.adapters.parser_registry import get_document_parsers
 
-from automation.adapters.repository_sqlite import SqliteProcessedInvoiceRepository
+from automation.adapters.repository_factory import create_processed_invoice_repository
 from automation.app.use_cases import InvoiceParsingUseCase, InvoiceExportUseCase
 from automation.celery_app import celery_app as celery
-# from automation.config.settings import settings
+from automation.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ def retry_failed_invoices_task(self):
     """Retry processing of failed invoices that are eligible for retry."""
     try:
         # Initialize dependencies
-        repository = SqliteProcessedInvoiceRepository(Path("emails.db"))
+        repository = create_processed_invoice_repository(settings.database_url)
         
         file_storage = LocalFileStorage()
         
@@ -89,7 +88,7 @@ def retry_failed_invoices_task(self):
 def cleanup_old_records_task():
     """Cleanup old completed records from the database."""
     try:
-        repository = SqliteProcessedInvoiceRepository(Path("emails.db"))
+        repository = create_processed_invoice_repository(settings.database_url)
         deleted_count = repository.cleanup_old_records(days_old=90)
         
         logger.info(f"Cleaned up {deleted_count} old records")
@@ -104,7 +103,7 @@ def cleanup_old_records_task():
 def get_processing_status_task():
     """Get current processing status summary for monitoring."""
     try:
-        repository = SqliteProcessedInvoiceRepository(Path("emails.db"))
+        repository = create_processed_invoice_repository(settings.database_url)
         status_summary = repository.get_status_summary()
         
         logger.info(f"Processing status: {status_summary}")
